@@ -1,0 +1,23 @@
+services:
+  shared_sql:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: shared_sql
+    restart: always
+    environment:
+      SA_PASSWORD: ${MSSQL_SA_PASSWORD:-YourStrong@Pass123}
+      ACCEPT_EULA: "Y"
+      MSSQL_PID: ${MSSQL_PID:-Express}
+    ports:
+      - "1433:1433"               # Expose for SSMS on Windows
+    volumes:
+      - /var/www/vps-infra/volumes/db/sql/data:/var/opt/mssql/data
+      - /var/www/vps-infra/volumes/db/sql/log:/var/opt/mssql/log
+      - /var/www/vps-infra/volumes/db/sql/secrets:/var/opt/mssql/secrets
+      - /var/www/vps-infra/volumes/db/sql/backups:/var/opt/mssql/backups
+    networks:
+      - traefik_net               # Shared network (for APIs)
+
+networks:
+  traefik_net:
+    name: traefik_net
+    external: true

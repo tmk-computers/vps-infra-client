@@ -1,0 +1,60 @@
+services:
+  registry:
+    image: registry:2
+    container_name: docker-registry-backend
+    restart: always
+    environment:
+      REGISTRY_AUTH: htpasswd
+      REGISTRY_AUTH_HTPASSWD_REALM: "Registry Realm"
+      REGISTRY_AUTH_HTPASSWD_PATH: /auth/htpasswd
+      # Enable CORS for registry-ui
+      REGISTRY_HTTP_HEADERS_Access-Control-Allow-Origin: '[https://${REGISTRY_HOST:-registry.example.com}]'
+      REGISTRY_HTTP_HEADERS_Access-Control-Allow-Methods: '[HEAD,GET,OPTIONS,DELETE,POST,PUT]'
+      REGISTRY_HTTP_HEADERS_Access-Control-Allow-Headers: '[Authorization,Accept,Cache-Control,Keep-Alive,User-Agent,X-Requested-With,If-Modified-Since,Content-Type]'
+      REGISTRY_HTTP_HEADERS_Access-Control-Expose-Headers: '[Docker-Content-Digest]'
+      REGISTRY_STORAGE_DELETE_ENABLED: "true"
+    volumes:
+      - /var/www/vps-infra/volumes/infra/registry:/var/lib/registry
+      - ./auth:/auth
+    ports:
+      - "127.0.0.1:5000:5000"
+    networks:
+      - traefik_net
+    labels:
+      - "traefik.enable=true"
+      # Route /v2 API requests to registry backend
+      - "traefik.http.routers.registry-api-http.rule=Host(`${REGISTRY_HOST:-registry.example.com}`) && PathPrefix(`/v2`)"
+      - "traefik.http.routers.registry-api-http.entrypoints=web"
+      
+      - "traefik.http.routers.registry-api.rule=Host(`${REGISTRY_HOST:-registry.example.com}`) && PathPrefix(`/v2`)"
+      - "traefik.http.routers.registry-api.entrypoints=websecure"
+      - "traefik.http.routers.registry-api.tls=true"
+      - "traefik.http.routers.registry-api.tls.certresolver=myresolver"
+      - "traefik.http.services.registry-api.loadbalancer.server.port=5000"
+
+  registry-ui:
+    image: joxit/docker-registry-ui:latest
+    container_name: docker-registry-ui
+    restart: always
+    environment:
+      - REGISTRY_TITLE=${COMPANY_NAME:-Private} Registry
+      - REGISTRY_URL=https://${REGISTRY_HOST:-registry.example.com}
+      - SINGLE_REGISTRY=true
+    networks:
+      - traefik_net
+    labels:
+      - "traefik.enable=true"
+      # Route general web requests to UI frontend
+      - "traefik.http.routers.registry-ui-http.rule=Host(`${REGISTRY_HOST:-registry.example.com}`)"
+      - "traefik.http.routers.registry-ui-http.entrypoints=web"
+
+      - "traefik.http.routers.registry-ui.rule=Host(`${REGISTRY_HOST:-registry.example.com}`)"
+      - "traefik.http.routers.registry-ui.entrypoints=websecure"
+      - "traefik.http.routers.registry-ui.tls=true"
+      - "traefik.http.routers.registry-ui.tls.certresolver=myresolver"
+      - "traefik.http.services.registry-ui.loadbalancer.server.port=80"
+
+networks:
+  traefik_net:
+    name: traefik_net
+    external: true

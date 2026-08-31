@@ -1,0 +1,21 @@
+services:
+  shared_oracle:
+    image: gvenzl/oracle-free:23-slim-faststart
+    container_name: shared_oracle
+    restart: always
+    environment:
+      - ORACLE_PASSWORD=${ORACLE_PASSWORD:-StrongOracle@123}
+      - APP_USER=${ORACLE_APP_USER:-devops_user}
+      - APP_USER_PASSWORD=${ORACLE_APP_PASSWORD:-StrongOracle@123}
+    ports:
+      - "1521:1521"
+    volumes:
+      - /var/www/vps-infra/volumes/db/oracle/data:/opt/oracle/oradata
+      - /var/www/vps-infra/volumes/db/oracle/backups:/opt/oracle/dpdump
+    networks:
+      - traefik_net
+
+networks:
+  traefik_net:
+    name: traefik_net
+    external: true

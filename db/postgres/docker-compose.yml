@@ -1,0 +1,52 @@
+services:
+  shared_postgres:
+    image: postgres:16-alpine
+    container_name: shared_postgres
+    restart: always
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-StrongPostgres@123}
+      POSTGRES_DB: ${POSTGRES_DB:-masterdb}
+    command: ["postgres", "-c", "max_connections=200"]
+    ports:
+      - "5432:5432"
+    volumes:
+      - /var/www/vps-infra/volumes/db/postgres/data:/var/lib/postgresql/data
+      - /var/www/vps-infra/volumes/db/postgres/backups:/backups
+    networks:
+      - traefik_net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: pgadmin
+    restart: always
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${SUPERADMIN_EMAIL:-admin@example.com}
+      PGADMIN_DEFAULT_PASSWORD: ${SUPERADMIN_PASSWORD:-NC+P4aVcpuCK7TAx8SQM}
+      PGADMIN_CONFIG_ENHANCED_COOKIE_PROTECTION: "False"
+    volumes:
+      - /var/www/vps-infra/volumes/db/pgadmin:/var/lib/pgadmin
+      - /var/www/vps-infra/volumes/db/pgadmin-config/config_local.py:/pgadmin4/config_local.py
+    ports:
+      - "5050:80"
+    networks:
+      - traefik_net
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.pgadmin-http.rule=Host(`${PGADMIN_HOST:-pgadmin.example.com}`)"
+      - "traefik.http.routers.pgadmin-http.entrypoints=web"
+      - "traefik.http.routers.pgadmin.rule=Host(`${PGADMIN_HOST:-pgadmin.example.com}`)"
+      - "traefik.http.routers.pgadmin.entrypoints=websecure"
+      - "traefik.http.routers.pgadmin.tls=true"
+      - "traefik.http.routers.pgadmin.tls.certresolver=myresolver"
+      - "traefik.http.services.pgadmin.loadbalancer.server.port=80"
+
+networks:
+  traefik_net:
+    name: traefik_net
+    external: true

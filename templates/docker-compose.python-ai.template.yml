@@ -1,0 +1,40 @@
+# ==============================================================================
+# 🧩 TEMPLATE: PYTHON FASTAPI / FLASK / PYTORCH AI SERVICE
+# ==============================================================================
+# Variables to substitute:
+# - {{SERVICE_NAME}}: Container & service slug (e.g. acme-ai-prod)
+# - {{SERVICE_HOST}}: Traefik public hostname (e.g. ai.acme.com)
+# - {{CONTAINER_PORT}}: Target application container port (e.g. 8000)
+# - {{ENV_NAME}}: dev | uat | prod
+# - {{DB_NAME}}: Dedicated database name (e.g. acme_ai_prod)
+# ==============================================================================
+
+services:
+  {{SERVICE_NAME}}:
+    image: {{IMAGE_TAG}}
+    container_name: {{SERVICE_NAME}}
+    restart: always
+    environment:
+      - APP_ENV={{ENV_NAME}}
+      - DATABASE_URL=postgresql://postgres:StrongPostgres@123@shared_postgres:5432/{{DB_NAME}}
+    volumes:
+      - /var/www/vps-infra/volumes/apps/{{SERVICE_SLUG}}/{{ENV_NAME}}/uploads:/app/uploads
+      - /var/www/vps-infra/volumes/apps/{{SERVICE_SLUG}}/{{ENV_NAME}}/logs:/app/logs
+    networks:
+      - traefik_net
+    labels:
+      - "traefik.enable=true"
+      # HTTP Router (ACME Challenge)
+      - "traefik.http.routers.{{SERVICE_NAME}}-http.rule=Host(`{{SERVICE_HOST}}`)"
+      - "traefik.http.routers.{{SERVICE_NAME}}-http.entrypoints=web"
+      
+      # HTTPS Router
+      - "traefik.http.routers.{{SERVICE_NAME}}.rule=Host(`{{SERVICE_HOST}}`)"
+      - "traefik.http.routers.{{SERVICE_NAME}}.entrypoints=websecure"
+      - "traefik.http.routers.{{SERVICE_NAME}}.tls=true"
+      - "traefik.http.routers.{{SERVICE_NAME}}.tls.certresolver=myresolver"
+      - "traefik.http.services.{{SERVICE_NAME}}.loadbalancer.server.port={{CONTAINER_PORT}}"
+
+networks:
+  traefik_net:
+    external: true

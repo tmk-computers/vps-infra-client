@@ -1,0 +1,141 @@
+services:
+  # ------------------------------------------------------------
+  # DevOps Manager - Backend API (Pre-built Image)
+  # ------------------------------------------------------------
+  devops-api-prod:
+    image: ${DEVOPS_API_IMAGE:-localhost:5000/tmk/devops-api:v2.1}
+    container_name: devops-api-prod
+    restart: always
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - ASPNETCORE_URLS=http://+:8080
+      - TMK_LICENSE_KEY=${TMK_LICENSE_KEY:-}
+      - TMK_LICENSE_SERVER=${TMK_LICENSE_SERVER:-https://license.tmkcomputers.in}
+
+      # Database Connection
+      - ConnectionStrings__DefaultConnection=Host=shared_postgres;Port=5432;Database=${POSTGRES_DB:-devops_prod};Username=${POSTGRES_USER:-postgres};Password=${POSTGRES_PASSWORD:-StrongPostgres@123};Pooling=true;MaxPoolSize=20;
+
+      # Dynamic JWT & SuperAdmin Settings
+      - JwtSettings__Issuer=https://${DEVOPS_API_HOST:-devops-api.example.com}
+      - JwtSettings__Audience=https://${DEVOPS_API_HOST:-devops-api.example.com}
+      - SeedData__SuperAdmin__Email=${SUPERADMIN_EMAIL:-amkore7@gmail.com}
+      - SeedData__SuperAdmin__Password=${SUPERADMIN_PASSWORD:-SuperAdmin@123}
+      - SeedData__SuperAdmin__FullName=${SUPERADMIN_FULLNAME:-Super Admin}
+
+      # Email & Notification Settings
+      - ENABLE_EMAIL_NOTIFICATIONS=${ENABLE_EMAIL_NOTIFICATIONS:-false}
+      - MailGun__Enabled=${ENABLE_EMAIL_NOTIFICATIONS:-false}
+      - NotificationSettings__EnableEmailNotifications=${ENABLE_EMAIL_NOTIFICATIONS:-false}
+      - MailGun__ApiKey=${MAILGUN_API_KEY:-}
+      - MailGun__Domain=${MAILGUN_DOMAIN:-}
+      - MailGun__FromEmail=${MAILGUN_FROM_EMAIL:-notifications@example.com}
+      - MailGun__FromName=${MAILGUN_FROM_NAME:-DevOps Platform}
+
+      # Google Drive OAuth Configuration
+      - GoogleDrive__AuthMode=${GOOGLE_DRIVE_AUTH_MODE:-OAuth}
+      - GoogleDrive__FolderId=${GOOGLE_DRIVE_FOLDER_ID:-}
+      - GoogleDrive__ClientId=${GOOGLE_DRIVE_CLIENT_ID:-}
+      - GoogleDrive__ClientSecret=${GOOGLE_DRIVE_CLIENT_SECRET:-}
+      - GoogleDrive__RefreshToken=${GOOGLE_DRIVE_REFRESH_TOKEN:-}
+
+      - GIT_SSH_COMMAND=ssh -o StrictHostKeyChecking=no
+
+    healthcheck:
+      test: ["CMD-SHELL", "pidof dotnet || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 60s
+
+    volumes:
+      - /var/www/vps-infra/volumes/apps/devops-api/prod/uploads:/app/wwwroot/uploads
+      - /var/www/vps-infra/volumes/infra/backups:/app/backups
+      - /var/www/vps-infra/volumes:/host_data
+      - /var/www:/var/www
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /root/.ssh:/root/.ssh:ro
+      - /root/.docker:/root/.docker:ro
+
+    networks:
+      - traefik_net
+
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.devops-api-prod.rule=Host(`${DEVOPS_API_HOST:-devops-api.example.com}`)"
+      - "traefik.http.routers.devops-api-prod.entrypoints=websecure"
+      - "traefik.http.routers.devops-api-prod.tls=true"
+      - "traefik.http.routers.devops-api-prod.tls.certresolver=myresolver"
+      - "traefik.http.services.devops-api-prod.loadbalancer.server.port=8080"
+
+  # ------------------------------------------------------------
+  # DevOps Manager - Web Frontend (Pre-built Image)
+  # ------------------------------------------------------------
+  devops-web-prod:
+    image: ${DEVOPS_WEB_IMAGE:-localhost:5000/tmk/devops-web:v2.1}
+    container_name: devops-web-prod
+    restart: always
+    networks:
+      - traefik_net
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.devops-web-prod-http.rule=Host(`${DEVOPS_WEB_HOST:-devops.example.com}`)"
+      - "traefik.http.routers.devops-web-prod-http.entrypoints=web"
+      - "traefik.http.routers.devops-web-prod.rule=Host(`${DEVOPS_WEB_HOST:-devops.example.com}`)"
+      - "traefik.http.routers.devops-web-prod.entrypoints=websecure"
+      - "traefik.http.routers.devops-web-prod.tls=true"
+      - "traefik.http.routers.devops-web-prod.tls.certresolver=myresolver"
+      - "traefik.http.services.devops-web-prod.loadbalancer.server.port=80"
+
+  # ------------------------------------------------------------
+  # CI Server - Backend API (Pre-built Image)
+  # ------------------------------------------------------------
+  ci-api-prod:
+    image: ${CI_API_IMAGE:-localhost:5000/tmk/ci-api:v2.1}
+    container_name: ci-api-prod
+    restart: always
+    environment:
+      - DATABASE_URL=Host=shared_postgres;Port=5432;Database=${POSTGRES_DB:-devops_prod};Username=${POSTGRES_USER:-postgres};Password=${POSTGRES_PASSWORD:-StrongPostgres@123}
+      - PORT=5051
+      - JWT_SECRET=${CI_JWT_SECRET:-5b5fea8f9a4b8f2c2e2c5b6f7d4c6b4c7b9d8e6e5e5f5c6b7d8e6e5b5f9c2e4}
+      - CI_API_PUBLIC_URL=https://${CI_API_HOST:-ci-api.example.com}
+      - DEVOPS_API_PUBLIC_URL=https://${DEVOPS_API_HOST:-devops-api.example.com}
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /var/www:/var/www
+      - /root/.ssh:/root/.ssh:ro
+      - /root/.docker:/root/.docker:ro
+    networks:
+      - traefik_net
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.ci-api-http.rule=Host(`${CI_API_HOST:-ci-api.example.com}`)"
+      - "traefik.http.routers.ci-api-http.entrypoints=web"
+      - "traefik.http.routers.ci-api.rule=Host(`${CI_API_HOST:-ci-api.example.com}`)"
+      - "traefik.http.routers.ci-api.entrypoints=websecure"
+      - "traefik.http.routers.ci-api.tls=true"
+      - "traefik.http.routers.ci-api.tls.certresolver=myresolver"
+      - "traefik.http.services.ci-api.loadbalancer.server.port=5051"
+
+  # ------------------------------------------------------------
+  # CI Server - Web Frontend (Pre-built Image)
+  # ------------------------------------------------------------
+  ci-web-prod:
+    image: ${CI_WEB_IMAGE:-localhost:5000/tmk/ci-web:v2.1}
+    container_name: ci-web-prod
+    restart: always
+    networks:
+      - traefik_net
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.ci-web-http.rule=Host(`${CI_WEB_HOST:-ci.example.com}`)"
+      - "traefik.http.routers.ci-web-http.entrypoints=web"
+      - "traefik.http.routers.ci-web.rule=Host(`${CI_WEB_HOST:-ci.example.com}`)"
+      - "traefik.http.routers.ci-web.entrypoints=websecure"
+      - "traefik.http.routers.ci-web.tls=true"
+      - "traefik.http.routers.ci-web.tls.certresolver=myresolver"
+      - "traefik.http.services.ci-web.loadbalancer.server.port=80"
+
+networks:
+  traefik_net:
+    name: traefik_net
+    external: true
