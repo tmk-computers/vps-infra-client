@@ -1,0 +1,54 @@
+services:
+  shared_mariadb:
+    image: mariadb:11-jammy
+    container_name: shared_mariadb
+    restart: always
+    environment:
+      MARIADB_ROOT_PASSWORD: ${MARIADB_ROOT_PASSWORD:-StrongMariaDB@123}
+      MARIADB_DATABASE: ${MARIADB_DATABASE:-masterdb}
+      MARIADB_USER: ${MARIADB_USER:-mariadb_user}
+      MARIADB_PASSWORD: ${MARIADB_PASSWORD:-StrongMariaDB@123}
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+      - --max_connections=150
+    ports:
+      - "3306:3306"
+    volumes:
+      - /var/www/vps-infra/volumes/db/mariadb/data:/var/lib/mysql
+      - /var/www/vps-infra/volumes/db/mariadb/backups:/backups
+    networks:
+      - traefik_net
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin:latest
+    container_name: phpmyadmin
+    restart: always
+    environment:
+      PMA_HOST: shared_mariadb
+      PMA_PORT: 3306
+      PMA_ARBITRARY: 0
+      UPLOAD_LIMIT: 300M
+    ports:
+      - "8082:80"
+    networks:
+      - traefik_net
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.phpmyadmin-http.rule=Host(`${PHPMYADMIN_HOST:-phpmyadmin.example.com}`)"
+      - "traefik.http.routers.phpmyadmin-http.entrypoints=web"
+      - "traefik.http.routers.phpmyadmin.rule=Host(`${PHPMYADMIN_HOST:-phpmyadmin.example.com}`)"
+      - "traefik.http.routers.phpmyadmin.entrypoints=websecure"
+      - "traefik.http.routers.phpmyadmin.tls=true"
+      - "traefik.http.routers.phpmyadmin.tls.certresolver=myresolver"
+      - "traefik.http.services.phpmyadmin.loadbalancer.server.port=80"
+
+networks:
+  traefik_net:
+    name: traefik_net
+    external: true

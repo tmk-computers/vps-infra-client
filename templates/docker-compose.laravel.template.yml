@@ -1,0 +1,52 @@
+# ==============================================================================
+# 🧩 TEMPLATE: LARAVEL (PHP 8.3 / 8.2) BACKEND / WEB SERVICE
+# ==============================================================================
+# Variables to substitute:
+# - {{SERVICE_NAME}}: Container & service slug (e.g. billing-laravel-prod)
+# - {{SERVICE_HOST}}: Traefik public hostname (e.g. portal.billing.com)
+# - {{ENV_NAME}}: dev | uat | prod
+# - {{DB_NAME}}: Dedicated database name (e.g. billing_laravel_prod)
+# ==============================================================================
+
+services:
+  {{SERVICE_NAME}}:
+    image: {{IMAGE_TAG}}
+    container_name: {{SERVICE_NAME}}
+    restart: always
+    environment:
+      - APP_ENV=production
+      - APP_DEBUG=false
+      - APP_URL=https://{{SERVICE_HOST}}
+      - LOG_CHANNEL=stderr
+      # Database Connection:
+      - DB_CONNECTION=pgsql
+      - DB_HOST=shared_postgres
+      - DB_PORT=5432
+      - DB_DATABASE={{DB_NAME}}
+      - DB_USERNAME=postgres
+      - DB_PASSWORD=StrongPostgres@123
+      # Redis Cache & Sessions (Optional):
+      - CACHE_DRIVER=file
+      - SESSION_DRIVER=file
+      - QUEUE_CONNECTION=database
+    volumes:
+      - /var/www/vps-infra/volumes/apps/{{SERVICE_SLUG}}/{{ENV_NAME}}/storage:/var/www/html/storage
+      - /var/www/vps-infra/volumes/apps/{{SERVICE_SLUG}}/{{ENV_NAME}}/uploads:/var/www/html/public/uploads
+    networks:
+      - traefik_net
+    labels:
+      - "traefik.enable=true"
+      # HTTP Router (ACME Challenge)
+      - "traefik.http.routers.{{SERVICE_NAME}}-http.rule=Host(`{{SERVICE_HOST}}`)"
+      - "traefik.http.routers.{{SERVICE_NAME}}-http.entrypoints=web"
+      
+      # HTTPS Router
+      - "traefik.http.routers.{{SERVICE_NAME}}.rule=Host(`{{SERVICE_HOST}}`)"
+      - "traefik.http.routers.{{SERVICE_NAME}}.entrypoints=websecure"
+      - "traefik.http.routers.{{SERVICE_NAME}}.tls=true"
+      - "traefik.http.routers.{{SERVICE_NAME}}.tls.certresolver=myresolver"
+      - "traefik.http.services.{{SERVICE_NAME}}.loadbalancer.server.port=80"
+
+networks:
+  traefik_net:
+    external: true

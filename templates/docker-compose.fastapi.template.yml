@@ -1,0 +1,44 @@
+# ==============================================================================
+# 🧩 TEMPLATE: FASTAPI (PYTHON 3.12 / 3.11) BACKEND / AI SERVICE
+# ==============================================================================
+# Variables to substitute:
+# - {{SERVICE_NAME}}: Container & service slug (e.g. ai-inference-api-prod)
+# - {{SERVICE_HOST}}: Traefik public hostname (e.g. ai.company.com)
+# - {{CONTAINER_PORT}}: Target application container port (Default: 8000)
+# - {{ENV_NAME}}: dev | uat | prod
+# - {{DB_NAME}}: Dedicated database name (e.g. ai_inference_prod)
+# ==============================================================================
+
+services:
+  {{SERVICE_NAME}}:
+    image: {{IMAGE_TAG}}
+    container_name: {{SERVICE_NAME}}
+    restart: always
+    environment:
+      - ENVIRONMENT=production
+      - PORT={{CONTAINER_PORT:-8000}}
+      - WORKERS=4
+      # Multi-database connection strings:
+      - DATABASE_URL=postgresql://postgres:StrongPostgres@123@shared_postgres:5432/{{DB_NAME}}
+      - MONGODB_URL=mongodb://root:StrongMongo@123@shared_mongodb:27017/{{DB_NAME}}?authSource=admin
+    volumes:
+      - /var/www/vps-infra/volumes/apps/{{SERVICE_SLUG}}/{{ENV_NAME}}/uploads:/app/uploads
+      - /var/www/vps-infra/volumes/apps/{{SERVICE_SLUG}}/{{ENV_NAME}}/models:/app/models
+    networks:
+      - traefik_net
+    labels:
+      - "traefik.enable=true"
+      # HTTP Router (ACME Challenge)
+      - "traefik.http.routers.{{SERVICE_NAME}}-http.rule=Host(`{{SERVICE_HOST}}`)"
+      - "traefik.http.routers.{{SERVICE_NAME}}-http.entrypoints=web"
+      
+      # HTTPS Router
+      - "traefik.http.routers.{{SERVICE_NAME}}.rule=Host(`{{SERVICE_HOST}}`)"
+      - "traefik.http.routers.{{SERVICE_NAME}}.entrypoints=websecure"
+      - "traefik.http.routers.{{SERVICE_NAME}}.tls=true"
+      - "traefik.http.routers.{{SERVICE_NAME}}.tls.certresolver=myresolver"
+      - "traefik.http.services.{{SERVICE_NAME}}.loadbalancer.server.port={{CONTAINER_PORT:-8000}}"
+
+networks:
+  traefik_net:
+    external: true

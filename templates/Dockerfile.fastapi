@@ -1,0 +1,47 @@
+# ==============================================================================
+# ⚡ PRODUCTION DOCKERFILE: FASTAPI (PYTHON 3.12)
+# High-performance asynchronous REST API / AI backend with Uvicorn
+# ==============================================================================
+
+FROM python:3.12-slim AS builder
+
+WORKDIR /build
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    libpq-dev \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY requirements.txt ./
+RUN pip install --no-cache-dir --user -r requirements.txt
+
+# Stage 2: Final Slim Runtime
+FROM python:3.12-slim AS runtime
+
+WORKDIR /app
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PATH=/root/.local/bin:$PATH \
+    PORT=8000 \
+    WORKERS=4
+
+# Install runtime PostgreSQL client library
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libpq5 \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy installed Python packages from builder
+COPY --from=builder /root/.local /root/.local
+
+# Copy application source code
+COPY . .
+
+EXPOSE 8000
+
+CMD ["sh", "-c", "uvicorn main:app --host 0.0.0.0 --port ${PORT:-8000} --workers ${WORKERS:-4} --proxy-headers --forwarded-allow-ips='*'"]

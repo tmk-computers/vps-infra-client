@@ -1,0 +1,37 @@
+# ==============================================================================
+# 🟩 PRODUCTION DOCKERFILE: EXPRESS.JS (NODE 20 ALPINE)
+# Minimal, secure, and production-ready Node.js REST API
+# ==============================================================================
+
+# Stage 1: Build & Prune Dependencies
+FROM node:20-alpine AS builder
+WORKDIR /app
+
+COPY package*.json ./
+RUN npm ci
+
+COPY . .
+# If TypeScript project, compile:
+RUN if [ -f "tsconfig.json" ]; then npm run build --if-present; fi
+RUN npm prune --production
+
+# Stage 2: Minimal Runtime
+FROM node:20-alpine AS runtime
+WORKDIR /app
+
+ENV NODE_ENV=production \
+    PORT=3000
+
+# Create non-root user
+RUN addgroup -S nodegroup && adduser -S nodeuser -G nodegroup
+
+COPY --from=builder /app/package*.json ./
+COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/dist ./dist 2>/dev/null || true
+COPY --from=builder /app ./
+
+USER nodeuser
+
+EXPOSE 3000
+
+CMD ["npm", "start"]

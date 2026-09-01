@@ -1,0 +1,47 @@
+# ==============================================================================
+# 🧩 TEMPLATE: SPRING BOOT (JAVA 21 / 17) MICROSERVICE
+# ==============================================================================
+# Variables to substitute:
+# - {{SERVICE_NAME}}: Container & service slug (e.g. store-order-api-prod)
+# - {{SERVICE_HOST}}: Traefik public hostname (e.g. api.store.com)
+# - {{CONTAINER_PORT}}: Target application container port (Default: 8080)
+# - {{ENV_NAME}}: dev | uat | prod
+# - {{DB_NAME}}: Dedicated database name (e.g. store_order_prod)
+# ==============================================================================
+
+services:
+  {{SERVICE_NAME}}:
+    image: {{IMAGE_TAG}}
+    container_name: {{SERVICE_NAME}}
+    restart: always
+    environment:
+      - SPRING_PROFILES_ACTIVE=production
+      - SERVER_PORT={{CONTAINER_PORT:-8080}}
+      # Multi-database connection templates:
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://shared_postgres:5432/{{DB_NAME}}?reWriteBatchedInserts=true
+      - SPRING_DATASOURCE_USERNAME=postgres
+      - SPRING_DATASOURCE_PASSWORD=StrongPostgres@123
+      - SPRING_JPA_HIBERNATE_DDL_AUTO=update
+      # JVM Performance Tuning for VPS constraints:
+      - JAVA_OPTS=-XX:+UseContainerSupport -XX:MaxRAMPercentage=75.0 -XX:+UseG1GC
+    volumes:
+      - /var/www/vps-infra/volumes/apps/{{SERVICE_SLUG}}/{{ENV_NAME}}/uploads:/app/uploads
+      - /var/www/vps-infra/volumes/apps/{{SERVICE_SLUG}}/{{ENV_NAME}}/logs:/app/logs
+    networks:
+      - traefik_net
+    labels:
+      - "traefik.enable=true"
+      # HTTP Router (ACME Challenge)
+      - "traefik.http.routers.{{SERVICE_NAME}}-http.rule=Host(`{{SERVICE_HOST}}`)"
+      - "traefik.http.routers.{{SERVICE_NAME}}-http.entrypoints=web"
+      
+      # HTTPS Router (TLS Termination)
+      - "traefik.http.routers.{{SERVICE_NAME}}.rule=Host(`{{SERVICE_HOST}}`)"
+      - "traefik.http.routers.{{SERVICE_NAME}}.entrypoints=websecure"
+      - "traefik.http.routers.{{SERVICE_NAME}}.tls=true"
+      - "traefik.http.routers.{{SERVICE_NAME}}.tls.certresolver=myresolver"
+      - "traefik.http.services.{{SERVICE_NAME}}.loadbalancer.server.port={{CONTAINER_PORT:-8080}}"
+
+networks:
+  traefik_net:
+    external: true

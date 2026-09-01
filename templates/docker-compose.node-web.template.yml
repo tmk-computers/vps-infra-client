@@ -1,0 +1,36 @@
+# ==============================================================================
+# 🧩 TEMPLATE: NODE.JS / NEXT.JS / REACT FRONTEND WEB CLIENT
+# ==============================================================================
+# Variables to substitute:
+# - {{SERVICE_NAME}}: Container & service slug (e.g. acme-web-prod)
+# - {{SERVICE_HOST}}: Traefik public hostname (e.g. app.acme.com)
+# - {{CONTAINER_PORT}}: Target application container port (e.g. 3000 or 80)
+# - {{ENV_NAME}}: dev | uat | prod
+# ==============================================================================
+
+services:
+  {{SERVICE_NAME}}:
+    image: {{IMAGE_TAG}}
+    container_name: {{SERVICE_NAME}}
+    restart: always
+    environment:
+      - NODE_ENV=production
+      - PORT={{CONTAINER_PORT}}
+    networks:
+      - traefik_net
+    labels:
+      - "traefik.enable=true"
+      # HTTP Router (ACME Challenge)
+      - "traefik.http.routers.{{SERVICE_NAME}}-http.rule=Host(`{{SERVICE_HOST}}`)"
+      - "traefik.http.routers.{{SERVICE_NAME}}-http.entrypoints=web"
+      
+      # HTTPS Router
+      - "traefik.http.routers.{{SERVICE_NAME}}.rule=Host(`{{SERVICE_HOST}}`)"
+      - "traefik.http.routers.{{SERVICE_NAME}}.entrypoints=websecure"
+      - "traefik.http.routers.{{SERVICE_NAME}}.tls=true"
+      - "traefik.http.routers.{{SERVICE_NAME}}.tls.certresolver=myresolver"
+      - "traefik.http.services.{{SERVICE_NAME}}.loadbalancer.server.port={{CONTAINER_PORT}}"
+
+networks:
+  traefik_net:
+    external: true

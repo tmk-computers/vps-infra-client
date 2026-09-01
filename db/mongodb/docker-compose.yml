@@ -1,0 +1,57 @@
+services:
+  shared_mongodb:
+    image: mongo:7.0
+    container_name: shared_mongodb
+    # ⚠️  DISABLED BY DEFAULT — set restart: always to enable persistent start
+    restart: "no"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USER:-mongo_admin}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD:-StrongMongo@123}
+    ports:
+      - "27017:27017"
+    volumes:
+      - /var/www/vps-infra/volumes/db/mongodb/data:/data/db
+      - /var/www/vps-infra/volumes/db/mongodb/backups:/backups
+    networks:
+      - traefik_net
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok", "--username", "${MONGO_ROOT_USER:-mongo_admin}", "--password", "${MONGO_ROOT_PASSWORD:-StrongMongo@123}", "--authenticationDatabase", "admin"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+
+  mongo_express:
+    image: mongo-express:latest
+    container_name: mongo_express
+    # ⚠️  DISABLED BY DEFAULT — follows shared_mongodb
+    restart: "no"
+    depends_on:
+      shared_mongodb:
+        condition: service_healthy
+    environment:
+      ME_CONFIG_MONGODB_ADMINUSERNAME: ${MONGO_ROOT_USER:-mongo_admin}
+      ME_CONFIG_MONGODB_ADMINPASSWORD: ${MONGO_ROOT_PASSWORD:-StrongMongo@123}
+      ME_CONFIG_MONGODB_SERVER: shared_mongodb
+      ME_CONFIG_MONGODB_PORT: 27017
+      ME_CONFIG_BASICAUTH_USERNAME: ${MONGO_ROOT_USER:-mongo_admin}
+      ME_CONFIG_BASICAUTH_PASSWORD: ${MONGO_ROOT_PASSWORD:-StrongMongo@123}
+      ME_CONFIG_SITE_BASEURL: /
+    ports:
+      - "8081:8081"
+    networks:
+      - traefik_net
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.mongo-express-http.rule=Host(`${MONGO_EXPRESS_HOST:-mongo.example.com}`)"
+      - "traefik.http.routers.mongo-express-http.entrypoints=web"
+      - "traefik.http.routers.mongo-express.rule=Host(`${MONGO_EXPRESS_HOST:-mongo.example.com}`)"
+      - "traefik.http.routers.mongo-express.entrypoints=websecure"
+      - "traefik.http.routers.mongo-express.tls=true"
+      - "traefik.http.routers.mongo-express.tls.certresolver=myresolver"
+      - "traefik.http.services.mongo-express.loadbalancer.server.port=8081"
+
+networks:
+  traefik_net:
+    name: traefik_net
+    external: true

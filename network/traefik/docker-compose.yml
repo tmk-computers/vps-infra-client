@@ -1,0 +1,61 @@
+services:
+  traefik:
+    image: traefik:latest
+    container_name: traefik_global
+    environment:
+      - DOCKER_API_VERSION=1.40
+    command:
+      - "--api.dashboard=true"
+      - "--providers.docker=true"
+      - "--providers.docker.exposedByDefault=false" # Security: do not expose containers by default
+      
+      # EntryPoints
+      - "--entrypoints.web.address=:80"
+      - "--entrypoints.websecure.address=:443"
+      - "--entrypoints.web.transport.respondingTimeouts.readTimeout=300s"
+      - "--entrypoints.websecure.transport.respondingTimeouts.readTimeout=300s"
+
+      # Global HTTP → HTTPS redirect middleware
+      - "--entrypoints.web.http.redirections.entryPoint.to=websecure"
+      - "--entrypoints.web.http.redirections.entryPoint.scheme=https"
+
+      # SSL Certificates (Let's Encrypt)
+      - "--certificatesresolvers.myresolver.acme.tlschallenge=true"
+      - "--certificatesresolvers.myresolver.acme.email=${ACME_SSL_EMAIL:-admin@example.com}"
+      - "--certificatesresolvers.myresolver.acme.storage=/letsencrypt/acme.json"
+
+    ports:
+      - "80:80"
+      - "443:443"
+
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./acme.json:/letsencrypt/acme.json
+      - ./users.htpasswd:/etc/traefik/users.htpasswd:ro
+
+    networks:
+      - traefik_net
+
+    labels:
+      - "traefik.enable=true"
+
+      # HTTP Router (For Let's Encrypt Challenge & HTTPS Redirect)
+      - "traefik.http.routers.traefik-dashboard-http.rule=Host(`${TRAEFIK_DASHBOARD_HOST:-traefik.example.com}`)"
+      - "traefik.http.routers.traefik-dashboard-http.entrypoints=web"
+
+      # HTTPS Router
+      - "traefik.http.routers.traefik-dashboard.rule=Host(`${TRAEFIK_DASHBOARD_HOST:-traefik.example.com}`)"
+      - "traefik.http.routers.traefik-dashboard.entrypoints=websecure"
+      - "traefik.http.routers.traefik-dashboard.tls=true"
+      - "traefik.http.routers.traefik-dashboard.tls.certresolver=myresolver"
+      - "traefik.http.routers.traefik-dashboard.service=api@internal"
+      - "traefik.http.routers.traefik-dashboard.middlewares=traefik-auth"
+
+      # HTTP Basic Authentication Middleware via usersFile
+      - "traefik.http.middlewares.traefik-auth.basicauth.usersFile=/etc/traefik/users.htpasswd"
+
+    restart: always
+
+networks:
+  traefik_net:
+    name: traefik_net

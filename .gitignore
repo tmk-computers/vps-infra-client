@@ -1,0 +1,92 @@
+# Exclude all projects in apps and code folders
+apps/*
+!apps/.gitkeep
+code/*
+!code/.gitkeep
+
+# DevOps & Traefik live runtime configurations
+network/traefik/acme.json
+network/traefik/users.htpasswd
+docker-registry/data/
+
+# Volumes: Ignore all dynamic company-specific application and mobile folders
+volumes/apps/*
+!volumes/apps/.gitkeep
+!volumes/apps/devops-api/
+!volumes/apps/devops-api/**/.gitkeep
+volumes/apk/*
+!volumes/apk/.gitkeep
+volumes/artifacts/*
+!volumes/artifacts/.gitkeep
+volumes/db/postgres/data/*
+volumes/db/postgres/backups/*
+volumes/db/pgadmin/*
+volumes/db/mariadb/*
+volumes/db/sql/*
+volumes/db/oracle/*
+volumes/db/mongodb/*
+!volumes/db/pgadmin-config/
+!volumes/db/pgadmin-config/**
+volumes/infra/registry/*
+volumes/infra/backups/*
+volumes/infra/license-server/*
+volumes/license.key
+volumes/*.key
+*.key
+*.db
+*.sqlite
+*.sqlite3
+*.db-journal
+
+# Compiled mobile package binaries and artifacts
+*.apk
+*.aab
+*.ipa
+*.aar
+
+# Database dumps & compressed archives
+*.dump
+*.sql.gz
+*.tar.gz
+*.zip
+build.log
+*.log
+
+# CI server cache folders
+ci-server/gradle-cache/
+ci-server/pub-cache/
+ci-server/ccache/
+ci-server/android-sdk/
+ci-server/maven-cache/
+ci-server/nuget-cache/
+
+# DevOps Manager temporary files and build folders
+devops-manager/api/backups/
+**/bin/
+**/obj/
+**/TestResults/
+
+# Node / Web build artifacts and dependencies
+node_modules/
+**/node_modules/
+dist/
+**/dist/
+.vite/
+**/.vite/
+.turbo/
+.cache/
+coverage/
+**/coverage/
+
+# IDE and OS files
+.vs/
+.vscode/
+.idea/
+*.suo
+*.user
+.DS_Store
+Thumbs.db
+
+# Local environment secrets
+.env
+.env.local
