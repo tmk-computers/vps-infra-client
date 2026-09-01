@@ -106,23 +106,69 @@ Point the following **A Records** with your DNS provider (Cloudflare, Route53, G
 
 ---
 
-### Step 4: Obtain Server Hardware Fingerprint
-If requesting an on-premise hardware-locked license, extract your server's hardware fingerprint:
+### Step 4: Choose Licensing Mode & Obtain Fingerprint (if applicable)
 
-```bash
-# Method 1 (Direct from Linux host shell - Recommended):
-echo -n "TMK-HW-$(cat /etc/machine-id)" | sha256sum | awk '{print $1}'
-```
-*(Returns your unique 64-character server hash, e.g. `b9e4ee73b6b7a630...`).*
+The platform supports two deployment licensing modes. Choose the one that matches your infrastructure:
 
-> 💡 **Tip**: If you are deploying on dynamic cloud infrastructure (AWS, DigitalOcean, Hetzner, GCP), you can alternatively request a **Cloud-Flex** license, which does not require a hardware fingerprint and allows seamless cloud resizing.
+#### ☁️ Mode A: Cloud-Flex Mode (Recommended for Cloud VPS: AWS, DigitalOcean, Hetzner, GCP)
+* **Fingerprint Required**: **None** (Zero host command execution needed).
+* **How it works**: Cloud-Flex uses dynamic cryptographic binding (`hardwareFingerprint: null`). It is designed for cloud virtual machines that frequently migrate host hypervisors, resize vCPUs/RAM, or restore from snapshots without breaking license validity.
+* **What you need**: Simply your **Company / Organization Name** (e.g. `"Zila Valley"`).
+
+#### 🔒 Mode B: Hardware-Locked Mode (For Dedicated / Bare-Metal On-Premise)
+* **Fingerprint Required**: **Yes** (Bound to unique 64-character SHA-256 machine hash).
+* **Command to extract server fingerprint on your host**:
+  ```bash
+  # Method 1 (Direct Linux Host Shell - Recommended):
+  echo -n "TMK-HW-$(cat /etc/machine-id)" | sha256sum | awk '{print $1}'
+  ```
+  **Example Output**:
+  ```text
+  b9e4ee73b6b7a63023c8c2c6eb47f71f265d930533b336b6daa5e6f46299c39f
+  ```
+
+  ```bash
+  # Method 2 (Via Container if containers are already running):
+  docker exec ci-api-prod node -e "fetch('http://devops-api-prod:8080/api/License/fingerprint').then(r=>r.json()).then(d=>console.log(d.serverFingerprint))"
+  ```
+
+  ```bash
+  # Method 3 (From Web UI):
+  # Visit https://devops-manager.yourdomain.com -> Click "Copy Server Fingerprint" on the lock screen.
+  ```
 
 ---
 
-### Step 5: Send Fingerprint to TMK Computers for License Key
-Send your hardware fingerprint (or company name for Cloud-Flex) to the **TMK Computers Licensing Team** (`licensing@tmkcomputers.in` or via your dedicated account manager).
+### Step 5: Send Request to TMK Computers for License Key
 
-TMK Computers will issue your cryptographically signed `TMK_LICENSE_KEY` token.
+Send your license request to the **TMK Computers Licensing Team** (`licensing@tmkcomputers.in` or via your dedicated account manager).
+
+#### 📧 Example Request Templates:
+
+##### Option A: Cloud-Flex Request (Cloud VPS)
+```text
+To: licensing@tmkcomputers.in
+Subject: License Request: Cloud-Flex - [Your Company Name]
+
+- Client / Company Name: Zila Valley
+- Mode: Cloud-Flex (AWS / DigitalOcean / Hetzner VPS)
+- Plan Tier: Enterprise
+- Duration: 1 Year (365 Days)
+```
+
+##### Option B: Hardware-Locked Request (Dedicated Server)
+```text
+To: licensing@tmkcomputers.in
+Subject: License Request: Hardware-Locked - [Your Company Name]
+
+- Client / Company Name: Zila Valley
+- Mode: Hardware-Locked
+- Hardware Fingerprint: b9e4ee73b6b7a63023c8c2c6eb47f71f265d930533b336b6daa5e6f46299c39f
+- Plan Tier: Enterprise
+- Duration: 1 Year (365 Days)
+```
+
+TMK Computers will issue your cryptographically signed `TMK_LICENSE_KEY` token string.
 
 ---
 
