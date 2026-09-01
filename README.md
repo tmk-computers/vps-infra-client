@@ -62,7 +62,7 @@ flowchart TD
 
 ---
 
-## 🚀 Quickstart Installation (3 Steps)
+## 🚀 Quickstart Installation (6 Steps)
 
 ### Step 1: Clone the Runtime Repository
 Clone this repository to your target VPS host:
@@ -72,7 +72,7 @@ cd /var/www/vps-infra
 ```
 
 ### Step 2: Configure Environment Variables
-Copy `.env.example` to `.env` and fill in your company details and license key:
+Copy `.env.example` to `.env` and fill in your company branding and admin credentials:
 ```bash
 cp .env.example .env
 nano .env
@@ -80,36 +80,18 @@ nano .env
 
 Key fields to configure:
 ```ini
-# Enterprise License provided by TMK Computers
-TMK_LICENSE_KEY="eyJjbGllbnRJZCI6..."
-
 # Primary Domain & SSL Contact
 PRIMARY_DOMAIN=yourdomain.com
 ACME_SSL_EMAIL=admin@yourdomain.com
+COMPANY_NAME="Your Company Name"
 
 # Initial SuperAdmin Credentials
 SUPERADMIN_EMAIL=admin@yourdomain.com
 SUPERADMIN_PASSWORD=YourStrongPassword123!
 ```
 
-### Step 3: Run the Bootstrap Script
-Execute the deployment bootstrap script:
-```bash
-chmod +x setup.sh
-./setup.sh
-```
-
-The script will automatically:
-1. Verify Docker Engine & Compose dependencies.
-2. Initialize directory scaffolding and storage volumes.
-3. Generate secure secrets and network bridges (`traefik_net`).
-4. Pull production images and launch the platform with automatic SSL.
-
----
-
-## 🌐 DNS Configuration
-
-Point the following **A Records** to your VPS Public IP address:
+### Step 3: Configure DNS A Records
+Point the following **A Records** with your DNS provider (Cloudflare, Route53, GoDaddy) to your VPS Public IP address:
 
 | Subdomain | Description | Example URL |
 |---|---|---|
@@ -121,6 +103,50 @@ Point the following **A Records** to your VPS Public IP address:
 | `registry` | Docker Container Registry | `https://registry.yourdomain.com` |
 | `pgadmin` | PostgreSQL Web Admin *(Optional)* | `https://pgadmin.yourdomain.com` |
 | `traefik` | Traefik Routing Dashboard | `https://traefik.yourdomain.com` |
+
+---
+
+### Step 4: Obtain Server Hardware Fingerprint
+If requesting an on-premise hardware-locked license, extract your server's hardware fingerprint:
+
+```bash
+# Method 1 (Direct from Linux host shell - Recommended):
+echo -n "TMK-HW-$(cat /etc/machine-id)" | sha256sum | awk '{print $1}'
+```
+*(Returns your unique 64-character server hash, e.g. `b9e4ee73b6b7a630...`).*
+
+> 💡 **Tip**: If you are deploying on dynamic cloud infrastructure (AWS, DigitalOcean, Hetzner, GCP), you can alternatively request a **Cloud-Flex** license, which does not require a hardware fingerprint and allows seamless cloud resizing.
+
+---
+
+### Step 5: Send Fingerprint to TMK Computers for License Key
+Send your hardware fingerprint (or company name for Cloud-Flex) to the **TMK Computers Licensing Team** (`licensing@tmkcomputers.in` or via your dedicated account manager).
+
+TMK Computers will issue your cryptographically signed `TMK_LICENSE_KEY` token.
+
+---
+
+### Step 6: Run Bootstrap & Activate License (1-Click)
+Apply your signed license token using any of these frictionless methods:
+
+#### Option A: 1-Click CLI Script (Recommended)
+```bash
+cd /var/www/vps-infra
+
+# Automatically configures volume storage, .env, container refresh, and status check:
+./activate-license.sh "YOUR_SIGNED_TMK_LICENSE_KEY"
+```
+
+#### Option B: Fresh Bootstrap Script with License Flag
+```bash
+cd /var/www/vps-infra
+chmod +x setup.sh
+./setup.sh --license "YOUR_SIGNED_TMK_LICENSE_KEY"
+```
+
+#### Option C: Live Web UI Activation
+1. Navigate to `https://devops-manager.yourdomain.com` in your browser.
+2. Paste the token into the **Subscription Lock Screen** modal and click **Activate License**. Activation takes effect **hot in-memory with zero container downtime**.
 
 ---
 
@@ -154,42 +180,8 @@ flowchart TD
 ### 🔒 2. Hardware-Locked Mode (For Dedicated / On-Premise)
 * **What it is**: A license locked to your server's unique 64-character SHA-256 hardware fingerprint (`SHA256("TMK-HW-" + /etc/machine-id)`).
 * **Why use it**: Ideal for high-security on-premise installations, enterprise private clouds, or bare-metal servers requiring strict compliance.
-* **Obtaining Server Hardware Fingerprint**:
-  ```bash
-  # Method 1 (Instant via CI container):
-  docker exec ci-api-prod node -e "fetch('http://devops-api-prod:8080/api/License/fingerprint').then(r=>r.json()).then(d => console.log(d.serverFingerprint))"
-
-  # Method 2 (Direct from Linux host shell):
-  echo -n "TMK-HW-$(cat /etc/machine-id)" | sha256sum | awk '{print $1}'
-
-  # Method 3 (From Web UI):
-  # Visit https://devops-manager.yourdomain.com -> Click "Copy Fingerprint" on the lock screen
-  ```
-
----
-
-### ⚡ Activating Your License (1-Click)
-
-Once you receive your signed `TMK_LICENSE_KEY` token from TMK Computers (Cloud-Flex or Hardware-Locked), activate it using any of these methods:
-
-#### Option A: 1-Click CLI Script (Recommended)
-```bash
-cd /var/www/vps-infra
-
-# Runs automated volume repair, .env sync, container refresh, and status validation:
-./activate-license.sh "YOUR_SIGNED_TOKEN_HERE"
-```
-
-#### Option B: Live Web UI Activation
-1. Navigate to `https://devops-manager.yourdomain.com` in your browser.
-2. In the **Subscription Lock Screen** or **License Management Modal**, paste your token.
-3. Click **Activate License**. Activation takes effect **hot in-memory with zero container downtime**.
-
-#### Option C: Initial Bootstrap Flag
-```bash
-cd /var/www/vps-infra
-./setup.sh --license "YOUR_SIGNED_TOKEN_HERE"
-```
+* **Obtaining Server Hardware Fingerprint**: See [Step 4](#step-4-obtain-server-hardware-fingerprint) above.
+* **Activating Your License**: See [Step 6](#step-6-run-bootstrap--activate-license-1-click) above.
 
 ---
 
