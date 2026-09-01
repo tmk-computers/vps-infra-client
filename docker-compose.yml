@@ -49,11 +49,13 @@ services:
       start_period: 60s
 
     volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /var/www:/var/www
       - /var/www/vps-infra/volumes/license.key:/app/license.key
       - /var/www/vps-infra/volumes/apps/devops-api/prod/backups:/app/backups
       - /var/www/vps-infra/volumes/apps/devops-api/prod/uploads:/app/uploads
       - /var/www/vps-infra/volumes/apps/devops-api/prod/logs:/app/logs
-      - /var/run/docker.sock:/var/run/docker.sock
+      - /root/.docker:/root/.docker:ro
 
     networks:
       - traefik_net
