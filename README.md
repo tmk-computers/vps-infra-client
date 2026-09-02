@@ -138,6 +138,11 @@ chmod +x setup.sh
 ./setup.sh --license "YOUR_SIGNED_TMK_LICENSE_KEY"
 ```
 
+> **Tip for QA / Staging Servers**: To deploy pre-release test builds on a remote test VPS, append `--tag uat`:
+> ```bash
+> ./setup.sh --tag uat --license "YOUR_SIGNED_TMK_LICENSE_KEY"
+> ```
+
 *(If your containers are already running, you can alternatively activate anytime with `./activate-license.sh "YOUR_SIGNED_TMK_LICENSE_KEY"` or via the Web UI lock screen).*
 
 ---
