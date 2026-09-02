@@ -37,6 +37,7 @@ echo -e "${GREEN}✅ Docker & Docker Compose detected.${NC}"
 while [[ "$#" -gt 0 ]]; do
     case $1 in
         --license) TMK_ARG_LICENSE="$2"; shift ;;
+        --tag) TMK_ARG_TAG="$2"; shift ;;
         *) echo "Unknown parameter: $1";;
     esac
     shift
@@ -47,6 +48,15 @@ if [ ! -f "$SCRIPT_DIR/.env" ]; then
     echo -e "${YELLOW}⚠️  No .env file found. Creating one from .env.example...${NC}"
     cp "$SCRIPT_DIR/.env.example" "$SCRIPT_DIR/.env"
     echo -e "${YELLOW}👉 Please review and edit '.env' with your domain, credentials, and TMK_LICENSE_KEY.${NC}"
+fi
+
+if [ -n "$TMK_ARG_TAG" ]; then
+    echo -e "${CYAN}▶ Applying container image tag override: ${TMK_ARG_TAG}...${NC}"
+    sed -i "s|^DEVOPS_API_IMAGE=.*|DEVOPS_API_IMAGE=ghcr.io/tmk-computers/tmk-devops-api:${TMK_ARG_TAG}|" "$SCRIPT_DIR/.env" || true
+    sed -i "s|^DEVOPS_WEB_IMAGE=.*|DEVOPS_WEB_IMAGE=ghcr.io/tmk-computers/tmk-devops-web:${TMK_ARG_TAG}|" "$SCRIPT_DIR/.env" || true
+    sed -i "s|^CI_API_IMAGE=.*|CI_API_IMAGE=ghcr.io/tmk-computers/tmk-ci-api:${TMK_ARG_TAG}|" "$SCRIPT_DIR/.env" || true
+    sed -i "s|^CI_WEB_IMAGE=.*|CI_WEB_IMAGE=ghcr.io/tmk-computers/tmk-ci-web:${TMK_ARG_TAG}|" "$SCRIPT_DIR/.env" || true
+    echo -e "${GREEN}✅ Configured container images to use tag '${TMK_ARG_TAG}'.${NC}"
 fi
 
 if [ -n "$TMK_ARG_LICENSE" ]; then
