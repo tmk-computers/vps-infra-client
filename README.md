@@ -234,6 +234,22 @@ flowchart TD
 
 ---
 
+## 🤖 AI-Native Intelligence & Enterprise Privacy
+
+VPS-Infra includes an integrated suite of autonomous DevOps intelligence agents and interactive copilot capabilities designed to streamline operations without compromising data sovereignty:
+
+### 🧠 Core Platform Agents
+1. **💬 Interactive DevOps Copilot**: Real-time natural language assistant within the Web UI to query container health, inspect application logs, and diagnose errors token-by-token.
+2. **🛡️ DevOps Intelligence Agent**: Automated daily background analysis of system logs, disk growth trends, database backup integrity, and container stability.
+3. **🔍 CI/CD Build Failure Diagnostics**: Instant root-cause explanations and suggested fixes when automated test pipelines or container builds fail.
+4. **🧹 Resource & Disk Optimizer**: Intelligent detection of dangling Docker images and orphaned volumes with 1-click cleanup proposals.
+
+### 🔒 Strict Data Privacy & Model Modes
+* **☁️ Cloud-Enabled Mode**: Connect your team's API keys (OpenAI, Anthropic Claude, Google Gemini) with tenant-level monthly spend caps.
+* **🔒 `LOCAL_ONLY` Mode (100% On-Premise)**: Powered by local Ollama CPU inference. Zero source code, database dumps, or server telemetry ever leave your VPS host.
+
+---
+
 ## 🛠️ Day-2 Operations & Maintenance
 
 ### Starting & Stopping Services
