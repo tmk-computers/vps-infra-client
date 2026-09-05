@@ -97,14 +97,41 @@ ACME_SSL_EMAIL=admin@yourdomain.com
 # 3. INITIAL SUPERADMIN CREDENTIALS
 SUPERADMIN_EMAIL=admin@yourdomain.com
 SUPERADMIN_PASSWORD=YourSecureSuperAdminPassword123!
+
+# 4. DEPLOYMENT TOPOLOGY & REGISTRY (Section 9)
+DEPLOYMENT_MODE=all-in-one          # all-in-one | devops-only | ci-only
+COMPOSE_PROFILES=all               # all | devops | ci
+DOCKER_REGISTRY_TYPE=private       # private | external
+DOCKER_REGISTRY_HOST=localhost:5000 # or ghcr.io/your-org
+SYNC_MODE=api                      # api (REST Sync) | db (Direct DB)
+CI_SECRET=SuperCiSecretKey123!     # Shared token for cross-machine REST sync
+
+# 5. SECURE CORS RESTRICTIONS (Optional, for separate CI domains)
+# ALLOWED_CORS_ORIGINS=https://ci.machine-a.yourdomain.com
 ```
 
-### Step 3: Run the Bootstrap Script
+### Step 3: Run the Turn-Key Bootstrap Script
 Execute the deployment script:
 ```bash
 chmod +x setup.sh
 ./setup.sh
 ```
+
+> **Automated Deployment Options**:
+> - **All-in-One (Single VPS)**:
+>   ```bash
+>   ./setup.sh --mode all-in-one --license "YOUR_LICENSE_KEY"
+>   ```
+> - **Distributed Machine A (Dedicated CI Server)**:
+>   ```bash
+>   ./setup.sh --mode ci-only --sync-mode api --ci-secret "YOUR_SECRET"
+>   ```
+> - **Distributed Machine B (DevOps Manager & Apps Host)**:
+>   ```bash
+>   ./setup.sh --mode devops-only --ci-secret "YOUR_SECRET"
+>   ```
+>
+> 📖 **Full Architectural Guide**: See [DUAL_TOPOLOGY_DEPLOYMENT_GUIDE.md](../03-OPERATIONS-AND-DEVOPS/DUAL_TOPOLOGY_DEPLOYMENT_GUIDE.md) for network diagrams, sequence flows, and disaster recovery.
 
 ---
 

@@ -155,7 +155,23 @@ The platform supports both self-hosted and external Docker registries.
 
 ---
 
-## 5. Deployment & Setup Guide
+## 5. CORS Security & Multi-Machine Origin Whitelisting
+
+When running in Distributed Topology, the CI Web UI (`ci-web`) on Machine A sends authenticated API requests to the DevOps Manager API (`devops-api`) on Machine B.
+
+### Security Principles:
+- **No Wildcard CORS**: The platform **strictly disallows** `Access-Control-Allow-Origin: *`.
+- **Domain Subdomain Auto-Whitelisting**: Any origin that is a subdomain of `PRIMARY_DOMAIN` (e.g. `https://ci.yourdomain.com`, `https://devops.yourdomain.com`) is automatically permitted and echoed back with `Access-Control-Allow-Credentials: true`.
+- **Custom Separate Domains via `ALLOWED_CORS_ORIGINS`**: If Machine A uses a distinct domain (e.g. `https://ci-runner.anotherdomain.com`), add it to `.env` on Machine B:
+  ```ini
+  ALLOWED_CORS_ORIGINS=https://ci-runner.anotherdomain.com,https://ci-qa.anotherdomain.com
+  ```
+- **Localhost Development**: Local origins (`http://localhost:*`, `http://127.0.0.1:*`) are permitted for developer testing.
+- **Untrusted Origins**: Any origin not matching the whitelist receives **no** `Access-Control-Allow-Origin` header and is immediately rejected by the browser.
+
+---
+
+## 6. Deployment & Setup Guide
 
 ### 5.1 Interactive Setup
 Run `setup.sh` on the target machine. If no CLI flags are supplied, an interactive selector appears:
@@ -208,7 +224,7 @@ sudo ./setup.sh \
 
 ---
 
-## 6. Docker Compose Profiles Reference
+## 7. Docker Compose Profiles Reference
 
 Docker Compose profiles ensure only the relevant containers run on each host:
 
@@ -233,7 +249,7 @@ docker compose --profile ci up -d
 
 ---
 
-## 7. Verification & E2E Testing
+## 8. Verification & E2E Testing
 
 To test and verify profile isolation and synchronization integrity on any node:
 
@@ -246,4 +262,5 @@ Checks performed:
 - [x] Compose profile isolation (`all`, `devops`, `ci`)
 - [x] CI Server Data Provider unit tests (`SYNC_MODE=api` vs `SYNC_MODE=db`)
 - [x] DevOps Manager `CiSyncController` integration tests (`X-CI-Secret` auth, 401 on unauthorized)
+- [x] Strict CORS Origin validation (no wildcard `*`, subdomains allowed, untrusted blocked)
 - [x] Registry resolution precedence validation

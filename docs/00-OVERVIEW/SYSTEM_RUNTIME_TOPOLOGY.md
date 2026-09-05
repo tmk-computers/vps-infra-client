@@ -79,6 +79,48 @@ flowchart TD
 
 ---
 
+## 🌐 Distributed Topology (Dedicated CI + Production VPS)
+
+For higher-scale environments with heavy build pipelines, the platform natively supports physical decoupling:
+
+```mermaid
+flowchart LR
+    DevUsers([Developers / Git Webhooks]) --> MachineA
+    ProdUsers([End Users / Customers]) --> MachineB
+
+    subgraph MachineA ["Machine A: Dedicated CI Build Machine"]
+        TraefikA[Traefik Proxy] --> CIWeb[CI Dashboard Web]
+        TraefikA --> CIAPI[CI Build Engine API]
+        TraefikA --> RegistryA[Private Docker Registry]
+        CIAPI --> DockerEngineA[(Docker BuildKit)]
+        CIAPI -.->|Tag & Push Image| RegistryA
+    end
+
+    subgraph MachineB ["Machine B: Client Production VPS"]
+        TraefikB[Traefik Proxy] --> DevOpsWeb[DevOps Manager Web]
+        TraefikB --> DevOpsAPI[DevOps Manager API]
+        TraefikB --> CustApps[Client Application Containers]
+        DevOpsAPI --> PostgresB[(Production PostgreSQL)]
+        CustApps --> PostgresB
+    end
+
+    %% Distributed Communication
+    CIAPI == "1. REST API Sync (HTTPS / X-CI-Secret)" ==> DevOpsAPI
+    DevOpsAPI -.->|2. Trigger Deploy Webhook| DevOpsAPI
+    DevOpsAPI == "3. Pull Built Image" ==> RegistryA
+```
+
+### Key Architectural Isolation Guarantees:
+1. **Zero Database Exposure**:
+   - The CI Server on Machine A does **not** connect to PostgreSQL on Machine B.
+   - All synchronization (products, services, build logs, unit/integration test results) streams via authenticated REST endpoints (`/api/ci/sync/*`) over HTTPS using `X-CI-Secret`. PostgreSQL port `5432` remains completely unexposed.
+2. **CPU & I/O Protection**:
+   - Resource-intensive compiles, Docker layer caching, and browser E2E test executions never starve customer-facing production services.
+3. **CORS Security**:
+   - The DevOps API enforces strict origin validation (no wildcard `*`), automatically accepting subdomains of `PRIMARY_DOMAIN` and explicit origins configured in `ALLOWED_CORS_ORIGINS`.
+
+---
+
 ## 🗄️ Storage & Persistent Volume Layout
 
 All application data, databases, secrets, and build artifacts persist in host directories under `/var/www/vps-infra/volumes`:
