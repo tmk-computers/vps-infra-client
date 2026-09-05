@@ -26,6 +26,12 @@ services:
       # Cross-Machine CI Deployment & REST Sync Secret
       - DeploySettings__CiSecret=${CI_SECRET:-SuperCiSecretKey123!}
 
+      # Secure CORS Domain & Origin Restrictions
+      - PRIMARY_DOMAIN=${PRIMARY_DOMAIN:-example.com}
+      - ALLOWED_CORS_ORIGINS=${ALLOWED_CORS_ORIGINS:-}
+      - DEVOPS_WEB_HOST=${DEVOPS_WEB_HOST:-devops.example.com}
+      - CI_WEB_HOST=${CI_WEB_HOST:-ci.example.com}
+
       # Email & Notification Settings
       - ENABLE_EMAIL_NOTIFICATIONS=${ENABLE_EMAIL_NOTIFICATIONS:-false}
       - MailGun__Enabled=${ENABLE_EMAIL_NOTIFICATIONS:-false}
