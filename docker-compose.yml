@@ -3,6 +3,7 @@ services:
   # DevOps Manager - Backend API (Pre-built Image)
   # ------------------------------------------------------------
   devops-api-prod:
+    profiles: ["all", "devops"]
     image: ${DEVOPS_API_IMAGE:-ghcr.io/tmk-computers/tmk-devops-api:v2.2}
     container_name: devops-api-prod
     restart: always
@@ -21,6 +22,9 @@ services:
       - SeedData__SuperAdmin__Email=${SUPERADMIN_EMAIL:-amkore7@gmail.com}
       - SeedData__SuperAdmin__Password=${SUPERADMIN_PASSWORD:-SuperAdmin@123}
       - SeedData__SuperAdmin__FullName=${SUPERADMIN_FULLNAME:-Super Admin}
+
+      # Cross-Machine CI Deployment & REST Sync Secret
+      - DeploySettings__CiSecret=${CI_SECRET:-SuperCiSecretKey123!}
 
       # Email & Notification Settings
       - ENABLE_EMAIL_NOTIFICATIONS=${ENABLE_EMAIL_NOTIFICATIONS:-false}
@@ -74,6 +78,7 @@ services:
   # DevOps Manager - Frontend Web UI (Pre-built Image)
   # ------------------------------------------------------------
   devops-web-prod:
+    profiles: ["all", "devops"]
     image: ${DEVOPS_WEB_IMAGE:-ghcr.io/tmk-computers/tmk-devops-web:v2.2}
     container_name: devops-web-prod
     restart: always
@@ -93,6 +98,7 @@ services:
   # CI Server - Backend API (Pre-built Image)
   # ------------------------------------------------------------
   ci-api-prod:
+    profiles: ["all", "ci"]
     image: ${CI_API_IMAGE:-ghcr.io/tmk-computers/tmk-ci-api:v2.2}
     container_name: ci-api-prod
     restart: always
@@ -102,6 +108,9 @@ services:
       - JWT_SECRET=${CI_JWT_SECRET:-5b5fea8f9a4b8f2c2e2c5b6f7d4c6b4c7b9d8e6e5e5f5c6b7d8e6e5b5f9c2e4}
       - CI_API_PUBLIC_URL=https://${CI_API_HOST:-ci-api.example.com}
       - DEVOPS_API_PUBLIC_URL=https://${DEVOPS_API_HOST:-devops-api.example.com}
+      - DOCKER_REGISTRY_HOST=${DOCKER_REGISTRY_HOST:-${REGISTRY_HOST:-localhost:5000}}
+      - SYNC_MODE=${SYNC_MODE:-db}
+      - CI_SECRET=${CI_SECRET:-SuperCiSecretKey123!}
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - /var/www:/var/www
@@ -123,6 +132,7 @@ services:
   # CI Server - Web Frontend (Pre-built Image)
   # ------------------------------------------------------------
   ci-web-prod:
+    profiles: ["all", "ci"]
     image: ${CI_WEB_IMAGE:-ghcr.io/tmk-computers/tmk-ci-web:v2.2}
     container_name: ci-web-prod
     restart: always
@@ -142,4 +152,3 @@ networks:
   traefik_net:
     name: traefik_net
     external: true
-

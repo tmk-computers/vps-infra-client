@@ -63,6 +63,7 @@ Client-side operational runbooks, backups, disaster recovery, and storage mainte
 
 | Document | Description |
 |---|---|
+| [`03-OPERATIONS-AND-DEVOPS/DUAL_TOPOLOGY_DEPLOYMENT_GUIDE.md`](./03-OPERATIONS-AND-DEVOPS/DUAL_TOPOLOGY_DEPLOYMENT_GUIDE.md) | Dual-topology architecture (All-in-One vs Distributed), Docker registry configuration, and REST API CI synchronization. |
 | [`03-OPERATIONS-AND-DEVOPS/DISASTER_RECOVERY_PLAYBOOK.md`](./03-OPERATIONS-AND-DEVOPS/DISASTER_RECOVERY_PLAYBOOK.md) | Automated database backup scheduling, S3/Google Drive synchronization, and disaster recovery procedures. |
 | [`03-OPERATIONS-AND-DEVOPS/STORAGE_LOGGING_CLEANUP_GUIDE.md`](./03-OPERATIONS-AND-DEVOPS/STORAGE_LOGGING_CLEANUP_GUIDE.md) | Log rotation policies, Docker prune automation, and disk capacity maintenance. |
 

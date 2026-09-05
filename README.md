@@ -147,6 +147,30 @@ chmod +x setup.sh
 
 ---
 
+### 🌐 Dual-Topology Deployments (All-in-One vs Distributed)
+
+The platform supports two deployment architectures to accommodate different workload and scalability requirements:
+
+1. **Option 1: All-in-One (Single VPS)**: Runs DevOps Manager, CI Server, Docker Registry, and PostgreSQL on a single host.
+   ```bash
+   ./setup.sh --mode all-in-one --license "YOUR_SIGNED_TMK_LICENSE_KEY"
+   ```
+2. **Option 2: Distributed (Multi-VPS)**: Physically isolates heavy CI build pipelines from production customer applications:
+   - **Machine A (Dedicated CI Server)**:
+     ```bash
+     ./setup.sh --mode ci-only --sync-mode api --ci-secret "YOUR_SHARED_SECRET"
+     ```
+   - **Machine B (DevOps Manager & Production Apps)**:
+     ```bash
+     ./setup.sh --mode devops-only --ci-secret "YOUR_SHARED_SECRET"
+     ```
+   - **Docker Registry Options**: Supports both the self-hosted private registry (`--registry-type private`) or external registries such as GitHub Packages (`--registry-type external --registry-host ghcr.io/yourorg`).
+   - **Zero Database Exposure**: CI Server syncs with DevOps Manager over secure HTTPS using the `X-CI-Secret` header—PostgreSQL port 5432 remains completely unexposed.
+
+> 📖 **Full Architectural Guide**: See [Dual-Topology Deployment Guide](docs/03-OPERATIONS-AND-DEVOPS/DUAL_TOPOLOGY_DEPLOYMENT_GUIDE.md) for network diagrams, sequence flows, and troubleshooting.
+
+---
+
 ### 🔒 Track 2: Hardware-Locked Mode (6 Steps — Dedicated On-Premise)
 *Ideal for dedicated bare-metal physical servers requiring strict node hardware compliance.*
 
