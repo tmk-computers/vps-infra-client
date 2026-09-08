@@ -37,7 +37,7 @@ echo -e "${GREEN}✅ Docker & Docker Compose detected.${NC}"
 while [[ "$#" -gt 0 ]]; do
     case "$1" in
         --license)
-            if [[ "$#" -lt 2 ]]; then
+            if [[ "$#" -lt 2 || -z "$2" || "$2" == --* ]]; then
                 echo -e "${RED}❌ --license requires a value.${NC}"
                 exit 1
             fi
@@ -45,11 +45,19 @@ while [[ "$#" -gt 0 ]]; do
             shift 2
             ;;
         --tag)
-            if [[ "$#" -lt 2 ]]; then
+            if [[ "$#" -lt 2 || -z "$2" || "$2" == --* ]]; then
                 echo -e "${RED}❌ --tag requires a value.${NC}"
                 exit 1
             fi
             TMK_ARG_TAG="$2"
+            shift 2
+            ;;
+        --domain)
+            if [[ "$#" -lt 2 || -z "$2" || "$2" == --* ]]; then
+                echo -e "${RED}❌ --domain requires a value.${NC}"
+                exit 1
+            fi
+            TMK_ARG_DOMAIN="$2"
             shift 2
             ;;
         *)
@@ -63,7 +71,7 @@ done
 if [ ! -f "$SCRIPT_DIR/.env" ]; then
     echo -e "${YELLOW}⚠️  No .env file found. Creating one from .env.example...${NC}"
     cp "$SCRIPT_DIR/.env.example" "$SCRIPT_DIR/.env"
-    echo -e "${YELLOW}👉 Please review and edit '.env' with your domain, credentials, and TMK_LICENSE_KEY.${NC}"
+    echo -e "${YELLOW}👉 Setup will configure routing domains; review credentials and TMK_LICENSE_KEY in '.env'.${NC}"
 fi
 
 if [ -n "${TMK_ARG_TAG:-}" ]; then
@@ -101,6 +109,10 @@ if [ -f "$SCRIPT_DIR/.env" ]; then
         fi
     done < "$SCRIPT_DIR/.env"
 fi
+
+# Resolve placeholder hostnames before creating or starting any infrastructure.
+source "$SCRIPT_DIR/scripts/configure-domains.sh"
+configure_domains
 
 # 4. Create external Docker network
 echo -e "${CYAN}▶ Ensuring 'traefik_net' Docker network exists...${NC}"
@@ -306,7 +318,7 @@ docker compose -f "$SCRIPT_DIR/docker-compose.yml" --env-file "$SCRIPT_DIR/.env"
 
 # 8. Print Completion Summary
 echo -e "\n${GREEN}${BOLD}======================================================================${NC}"
-echo -e "${GREEN}${BOLD}   🎉 VPS-INFRA RUNTIME DEPLOYED SUCCESSFULLY!${NC}"
+echo -e "${GREEN}${BOLD}   VPS-INFRA CONTAINERS STARTED${NC}"
 echo -e "${GREEN}${BOLD}======================================================================${NC}"
 echo -e "${BOLD}Company / Organization:${NC}  ${COMPANY_NAME:-Custom Organization}"
 echo -e "${BOLD}Primary Domain:${NC}          ${PRIMARY_DOMAIN:-example.com}"
@@ -325,8 +337,7 @@ echo -e "  • SuperAdmin Email:      ${YELLOW}${SUPERADMIN_EMAIL:-admin@example
 echo -e "  • SuperAdmin Password:   ${YELLOW}${SUPERADMIN_PASSWORD:-[Configured in .env]}${NC}"
 echo ""
 echo -e "${BOLD}💡 Next Steps:${NC}"
-echo "  1. Point your domain DNS A-records to this VPS public IP."
+echo "  1. Verify DNS points to this VPS and HTTPS certificates are issued before logging in."
 echo "  2. Log in to the DevOps Manager to register your Products & microservices."
 echo "  3. Use templates in '$SCRIPT_DIR/templates' for new service deployments."
 echo -e "${GREEN}======================================================================${NC}\n"
-

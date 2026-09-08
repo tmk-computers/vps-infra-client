@@ -113,6 +113,12 @@ cd /var/www/vps-infra
 ```
 
 #### Step 3: Configure Environment Variables & DNS
+`setup.sh` creates `.env` when missing and asks for your primary domain if it is
+still a placeholder. It fills missing or example service hostnames from that
+domain, preserves custom hostnames, and backs up `.env` before saving.
+If `.env` already contains a real `PRIMARY_DOMAIN`, no `--domain` argument is
+needed. Configure your credentials and license before deploying:
+
 ```bash
 cp .env.example .env
 nano .env
@@ -150,6 +156,19 @@ cd /var/www/vps-infra
 chmod +x setup.sh
 ./setup.sh --license "YOUR_SIGNED_TMK_LICENSE_KEY"
 ```
+
+For unattended setup, supply the domain explicitly (or set `PRIMARY_DOMAIN` in
+`.env` first):
+
+```bash
+./setup.sh --domain rentsort.com --license "YOUR_SIGNED_TMK_LICENSE_KEY"
+```
+
+Use your own domain. Setup refuses to start services with missing or invalid
+domain configuration in unattended mode. DNS records must point to the VPS for
+HTTPS certificate issuance; setup does not manage your DNS provider.
+`--domain` replaces placeholder hostnames and preserves existing custom
+hostnames, so domain migrations require updating those overrides.
 
 > **Tip for QA / Staging Servers**: To deploy pre-release test builds on a remote test VPS, append `--tag uat`:
 > ```bash
