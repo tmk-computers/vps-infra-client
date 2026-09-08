@@ -343,6 +343,10 @@ docker compose -f "$SCRIPT_DIR/docker-registry/docker-compose.yml" --env-file "$
 echo -e "\n${CYAN}▶ Pulling and Starting Managed Platform Services (DevOps & CI)...${NC}"
 docker compose -f "$SCRIPT_DIR/docker-compose.yml" --env-file "$SCRIPT_DIR/.env" up -d
 
+# Verify account creation before presenting the configured credentials.
+source "$SCRIPT_DIR/scripts/validate-admin.sh"
+validate_admin_account
+
 # 8. Print Completion Summary
 echo -e "\n${GREEN}${BOLD}======================================================================${NC}"
 echo -e "${GREEN}${BOLD}   VPS-INFRA CONTAINERS STARTED${NC}"
@@ -359,12 +363,17 @@ echo -e "  • Private Registry:      ${CYAN}https://${REGISTRY_HOST:-registry.e
 echo -e "  • pgAdmin Web:           ${CYAN}https://${PGADMIN_HOST:-pgadmin.example.com}${NC}"
 echo -e "  • Traefik Dashboard:     ${CYAN}https://${TRAEFIK_DASHBOARD_HOST:-traefik.example.com}${NC}"
 echo ""
-echo -e "${BOLD}🔑 Initial Administrator Access:${NC}"
-echo -e "  • SuperAdmin Email:      ${YELLOW}${SUPERADMIN_EMAIL:-admin@example.com}${NC}"
-echo -e "  • SuperAdmin Password:   ${YELLOW}${SUPERADMIN_PASSWORD:-[Configured in .env]}${NC}"
+echo -e "${BOLD}🔑 Configured Administrator Credentials:${NC}"
+printf '  • SuperAdmin Email:      %s\n' "${SUPERADMIN_EMAIL:-amkore7@gmail.com}"
+printf '  • SuperAdmin Password:   %s\n' "${SUPERADMIN_PASSWORD:-SuperAdmin@123}"
+print_admin_validation
 echo ""
 echo -e "${BOLD}💡 Next Steps:${NC}"
 echo "  1. Verify DNS points to this VPS and HTTPS certificates are issued before logging in."
-echo "  2. Log in to the DevOps Manager to register your Products & microservices."
+if [[ "$ADMIN_VALIDATION_STATUS" == found ]]; then
+    echo "  2. Test login to the DevOps Manager, then register your Products & microservices."
+else
+    echo "  2. Resolve administrator account validation above before attempting login."
+fi
 echo "  3. Use templates in '$SCRIPT_DIR/templates' for new service deployments."
 echo -e "${GREEN}======================================================================${NC}\n"
