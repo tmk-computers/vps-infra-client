@@ -168,6 +168,29 @@ is_port_in_use() {
     ss -H -ltn "sport = :$port" 2>/dev/null | grep -q .
 }
 
+# Match actual host port bindings and this installation's Compose identity.
+# Compose metadata also recognizes containers created before our role label existed.
+is_our_traefik_port() {
+    local port="$1" containers container metadata bindings role service directory configs
+    local found=false
+    containers=$(docker ps -q) || return 1
+    for container in $containers; do
+        bindings=$(docker inspect --format '{{range $port, $bindings := .NetworkSettings.Ports}}{{range $bindings}}{{println .HostPort}}{{end}}{{end}}' "$container") || return 1
+        if ! grep -qx "$port" <<< "$bindings"; then
+            continue
+        fi
+        metadata=$(docker inspect --format '{{index .Config.Labels "com.tmk.vps-infra.role"}}|{{index .Config.Labels "com.docker.compose.service"}}|{{index .Config.Labels "com.docker.compose.project.working_dir"}}|{{index .Config.Labels "com.docker.compose.project.config_files"}}' "$container") || return 1
+        IFS='|' read -r role service directory configs <<< "$metadata"
+        [[ "$service" == traefik && "$directory" == "$SCRIPT_DIR/network/traefik" && "$configs" == "$SCRIPT_DIR/network/traefik/docker-compose.yml" ]] || return 1
+        case "$role" in
+            reverse-proxy|''|'<no value>') ;;
+            *) return 1 ;;
+        esac
+        found=true
+    done
+    [[ "$found" == true ]]
+}
+
 # Display both system-process and Docker-container ownership information.
 show_port_owner() {
     local port="$1"
@@ -221,6 +244,10 @@ prepare_traefik_ports() {
 
     for port in 80 443; do
         if is_port_in_use "$port"; then
+            if is_our_traefik_port "$port"; then
+                echo -e "${GREEN}✅ Port $port is already owned by this installation's Traefik.${NC}"
+                continue
+            fi
             conflicting_ports+=("$port")
             echo -e "${YELLOW}⚠️  Port $port is already in use.${NC}"
             show_port_owner "$port"
@@ -239,7 +266,7 @@ prepare_traefik_ports() {
     done
 
     if [ "${#conflicting_ports[@]}" -eq 0 ]; then
-        echo -e "${GREEN}✅ Ports 80 and 443 are available for Traefik.${NC}"
+        echo -e "${GREEN}✅ Ports 80 and 443 are available or already owned by this installation's Traefik.${NC}"
         return 0
     fi
 
@@ -287,7 +314,7 @@ prepare_traefik_ports() {
     done
 
     for port in 80 443; do
-        if is_port_in_use "$port"; then
+        if is_port_in_use "$port" && ! is_our_traefik_port "$port"; then
             echo -e "${RED}❌ Port $port is still occupied.${NC}"
             show_port_owner "$port"
             echo "Traefik cannot start until this port is released."

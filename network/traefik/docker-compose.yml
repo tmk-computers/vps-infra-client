@@ -37,6 +37,7 @@ services:
       - traefik_net
 
     labels:
+      - "com.tmk.vps-infra.role=reverse-proxy"
       - "traefik.enable=true"
 
       # HTTP Router (For Let's Encrypt Challenge & HTTPS Redirect)
@@ -60,4 +61,3 @@ networks:
   traefik_net:
     name: traefik_net
     external : true
-
