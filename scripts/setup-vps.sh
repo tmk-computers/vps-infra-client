@@ -137,6 +137,37 @@ if [ -f "${INFRA_DIR}/scripts/optimize-vps-limits.sh" ]; then
     "${INFRA_DIR}/scripts/optimize-vps-limits.sh"
 fi
 
+# 10. Configure Docker Log Rotation and System Maintenance Crons
+echo -e "${BLUE}🧹 Configuring Docker log rotation and automated maintenance crons...${NC}"
+if [ ! -f /etc/docker/daemon.json ]; then
+    mkdir -p /etc/docker
+    cat << 'EOF' > /etc/docker/daemon.json
+{
+  "log-driver": "json-file",
+  "log-opts": {
+    "max-size": "50m",
+    "max-file": "3"
+  }
+}
+EOF
+    systemctl reload docker 2>/dev/null || true
+    echo -e "${GREEN}✅ Docker daemon log rotation configured (50MB max, 3 files).${NC}"
+else
+    echo -e "${GREEN}✅ /etc/docker/daemon.json already exists.${NC}"
+fi
+
+cat << 'EOF' > /etc/cron.d/docker-maintenance
+# Daily Docker builder prune keeping 2GB cache
+30 3 * * * root docker builder prune -af --reserved-space 2GB > /dev/null 2>&1
+# Daily Local Registry tag prune
+15 3 * * * root /usr/bin/python3 /var/www/vps-infra/scripts/prune_registry.py > /dev/null 2>&1
+EOF
+chmod 644 /etc/cron.d/docker-maintenance
+if [ -f "${INFRA_DIR}/scripts/prune_registry.py" ]; then
+    chmod +x "${INFRA_DIR}/scripts/prune_registry.py"
+fi
+echo -e "${GREEN}✅ Daily maintenance cron configured in /etc/cron.d/docker-maintenance.${NC}"
+
 echo ""
 echo -e "${GREEN}${BOLD}================================================================================"
 echo "          🎉 Platform Bootstrap & Prerequisites Completed Successfully!        "

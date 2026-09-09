@@ -33,6 +33,55 @@ if ! docker compose version &> /dev/null; then
 fi
 echo -e "${GREEN}✅ Docker & Docker Compose detected.${NC}"
 
+# 1.1 Configure Docker Log Rotation & Maintenance Crons
+configure_docker_log_rotation_and_maintenance() {
+    echo -e "\n${CYAN}▶ Checking Docker log rotation and automated maintenance crons...${NC}"
+    
+    # 1. Configure Docker daemon log rotation if missing
+    if [ ! -f /etc/docker/daemon.json ]; then
+        if [ "$EUID" -eq 0 ] || command -v sudo &> /dev/null; then
+            echo -e "   • Setting up /etc/docker/daemon.json (max-size: 50m, max-file: 3)..."
+            sudo mkdir -p /etc/docker
+            sudo tee /etc/docker/daemon.json > /dev/null << 'EOF'
+{
+  "log-driver": "json-file",
+  "log-opts": {
+    "max-size": "50m",
+    "max-file": "3"
+  }
+}
+EOF
+            sudo systemctl reload docker 2>/dev/null || true
+            echo -e "${GREEN}   ✅ Docker daemon log rotation configured.${NC}"
+        fi
+    else
+        echo -e "${GREEN}   ✅ Docker daemon log rotation already configured.${NC}"
+    fi
+
+    # 2. Configure system maintenance cron
+    if [ -d /etc/cron.d ] && { [ "$EUID" -eq 0 ] || command -v sudo &> /dev/null; }; then
+        if [ ! -f /etc/cron.d/docker-maintenance ]; then
+            echo -e "   • Setting up /etc/cron.d/docker-maintenance..."
+            sudo tee /etc/cron.d/docker-maintenance > /dev/null << 'EOF'
+# Daily Docker builder prune keeping 2GB cache
+30 3 * * * root docker builder prune -af --reserved-space 2GB > /dev/null 2>&1
+# Daily Local Registry tag prune
+15 3 * * * root /usr/bin/python3 /var/www/vps-infra/scripts/prune_registry.py > /dev/null 2>&1
+EOF
+            sudo chmod 644 /etc/cron.d/docker-maintenance
+            echo -e "${GREEN}   ✅ Daily maintenance cron configured.${NC}"
+        else
+            echo -e "${GREEN}   ✅ /etc/cron.d/docker-maintenance already configured.${NC}"
+        fi
+    fi
+
+    if [ -f "$SCRIPT_DIR/scripts/prune_registry.py" ]; then
+        chmod +x "$SCRIPT_DIR/scripts/prune_registry.py"
+    fi
+}
+
+configure_docker_log_rotation_and_maintenance
+
 # Parse optional CLI arguments
 TMK_ARG_MODE=""
 TMK_ARG_REGISTRY_TYPE=""
