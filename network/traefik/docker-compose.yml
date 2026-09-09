@@ -3,7 +3,7 @@ services:
     image: traefik:latest
     container_name: traefik_global
     environment:
-      - DOCKER_API_VERSION=1.40
+      - DOCKER_API_VERSION=1.44
     command:
       - "--api.dashboard=true"
       - "--providers.docker=true"
@@ -37,6 +37,7 @@ services:
       - traefik_net
 
     labels:
+      - "com.tmk.vps-infra.role=reverse-proxy"
       - "traefik.enable=true"
 
       # HTTP Router (For Let's Encrypt Challenge & HTTPS Redirect)
@@ -59,3 +60,4 @@ services:
 networks:
   traefik_net:
     name: traefik_net
+    external: true

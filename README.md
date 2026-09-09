@@ -10,6 +10,19 @@
 
 ---
 
+## 📚 Complete Documentation Hub
+
+| Step | Topic | Detailed Guide |
+|:---:|---|---|
+| **1** | **Quickstart Installation** | [🐧 Linux VPS Installation Guide](docs/01-getting-started/01-linux-vps-installation.md) |
+| **2** | **Subscription Activation** | [🔑 License Activation Guide (Cloud-Flex & Hardware-Locked)](docs/01-getting-started/03-license-activation.md) |
+| **3** | **Deploying Applications** | [📦 Web APIs](docs/02-deploying-applications/01-web-apis.md) • [🌐 Frontend SPAs](docs/02-deploying-applications/02-frontend-spas.md) • [📱 Mobile CI/CD](docs/02-deploying-applications/03-mobile-ci-cd.md) |
+| **4** | **Database & Backups** | [🔌 Database Connection Strings](docs/03-database-management/01-database-connections.md) • [💾 Automated Daily Backups](docs/03-database-management/02-automated-backups.md) |
+| **5** | **Operations & Recovery** | [📜 Logs & Monitoring](docs/04-operations-and-troubleshooting/01-logs-and-monitoring.md) • [🛡️ SSL & Domain Troubleshooting](docs/04-operations-and-troubleshooting/02-ssl-domain-troubleshooting.md) • [🚨 15-Minute Disaster Recovery](docs/04-operations-and-troubleshooting/03-disaster-recovery.md) |
+
+👉 **Full Documentation Hub Index**: [`docs/README.md`](docs/README.md)
+
+
 ## 🏛️ Architecture Overview
 
 ```mermaid
@@ -100,6 +113,12 @@ cd /var/www/vps-infra
 ```
 
 #### Step 3: Configure Environment Variables & DNS
+`setup.sh` creates `.env` when missing and asks for your primary domain if it is
+still a placeholder. It fills missing or example service hostnames from that
+domain, preserves custom hostnames, and backs up `.env` before saving.
+If `.env` already contains a real `PRIMARY_DOMAIN`, no `--domain` argument is
+needed. Configure your credentials and license before deploying:
+
 ```bash
 cp .env.example .env
 nano .env
@@ -137,6 +156,19 @@ cd /var/www/vps-infra
 chmod +x setup.sh
 ./setup.sh --license "YOUR_SIGNED_TMK_LICENSE_KEY"
 ```
+
+For unattended setup, supply the domain explicitly (or set `PRIMARY_DOMAIN` in
+`.env` first):
+
+```bash
+./setup.sh --domain company.com --license "YOUR_SIGNED_TMK_LICENSE_KEY"
+```
+
+Use your own domain. Setup refuses to start services with missing or invalid
+domain configuration in unattended mode. DNS records must point to the VPS for
+HTTPS certificate issuance; setup does not manage your DNS provider.
+`--domain` replaces placeholder hostnames and preserves existing custom
+hostnames, so domain migrations require updating those overrides.
 
 > **Tip for QA / Staging Servers**: To deploy pre-release test builds on a remote test VPS, append `--tag uat`:
 > ```bash

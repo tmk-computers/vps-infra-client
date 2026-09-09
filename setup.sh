@@ -43,26 +43,75 @@ TMK_ARG_SYNC_MODE=""
 TMK_ARG_CI_SECRET=""
 
 while [[ "$#" -gt 0 ]]; do
-    case $1 in
-        --license) TMK_ARG_LICENSE="$2"; shift ;;
-        --tag) TMK_ARG_TAG="$2"; shift ;;
-        --mode) TMK_ARG_MODE="$2"; shift ;;
-        --registry-type) TMK_ARG_REGISTRY_TYPE="$2"; shift ;;
-        --registry-host) TMK_ARG_REGISTRY_HOST="$2"; shift ;;
-        --registry-user) TMK_ARG_REGISTRY_USER="$2"; shift ;;
-        --registry-pass) TMK_ARG_REGISTRY_PASS="$2"; shift ;;
-        --sync-mode) TMK_ARG_SYNC_MODE="$2"; shift ;;
-        --ci-secret) TMK_ARG_CI_SECRET="$2"; shift ;;
-        *) echo "Unknown parameter: $1";;
+    case "$1" in
+        --license)
+            if [[ "$#" -lt 2 || -z "$2" || "$2" == --* ]]; then
+                echo -e "${RED}❌ --license requires a value.${NC}"
+                exit 1
+            fi
+            TMK_ARG_LICENSE="$2"
+            shift 2
+            ;;
+        --tag)
+            if [[ "$#" -lt 2 || -z "$2" || "$2" == --* ]]; then
+                echo -e "${RED}❌ --tag requires a value.${NC}"
+                exit 1
+            fi
+            TMK_ARG_TAG="$2"
+            shift 2
+            ;;
+        --domain)
+            if [[ "$#" -lt 2 || -z "$2" || "$2" == --* ]]; then
+                echo -e "${RED}❌ --domain requires a value.${NC}"
+                exit 1
+            fi
+            TMK_ARG_DOMAIN="$2"
+            shift 2
+            ;;
+        -y|--yes|--force)
+            TMK_ARG_YES=true
+            shift 1
+            ;;
+        --mode)
+            TMK_ARG_MODE="$2"
+            shift 2
+            ;;
+        --registry-type)
+            TMK_ARG_REGISTRY_TYPE="$2"
+            shift 2
+            ;;
+        --registry-host)
+            TMK_ARG_REGISTRY_HOST="$2"
+            shift 2
+            ;;
+        --registry-user)
+            TMK_ARG_REGISTRY_USER="$2"
+            shift 2
+            ;;
+        --registry-pass)
+            TMK_ARG_REGISTRY_PASS="$2"
+            shift 2
+            ;;
+        --sync-mode)
+            TMK_ARG_SYNC_MODE="$2"
+            shift 2
+            ;;
+        --ci-secret)
+            TMK_ARG_CI_SECRET="$2"
+            shift 2
+            ;;
+        *)
+            echo -e "${RED}❌ Unknown parameter: $1${NC}"
+            exit 1
+            ;;
     esac
-    shift
 done
 
 # 2. Check or Create .env configuration
 if [ ! -f "$SCRIPT_DIR/.env" ]; then
     echo -e "${YELLOW}⚠️  No .env file found. Creating one from .env.example...${NC}"
     cp "$SCRIPT_DIR/.env.example" "$SCRIPT_DIR/.env"
-    echo -e "${YELLOW}👉 Please review and edit '.env' with your domain, credentials, and TMK_LICENSE_KEY.${NC}"
+    echo -e "${YELLOW}👉 Setup will configure routing domains; review credentials and TMK_LICENSE_KEY in '.env'.${NC}"
 fi
 
 set_env_val() {
@@ -137,7 +186,7 @@ if [ -n "$TMK_ARG_CI_SECRET" ]; then
     set_env_val "CI_SECRET" "$TMK_ARG_CI_SECRET"
 fi
 
-if [ -n "$TMK_ARG_TAG" ]; then
+if [ -n "${TMK_ARG_TAG:-}" ]; then
     echo -e "${CYAN}▶ Applying container image tag override: ${TMK_ARG_TAG}...${NC}"
     sed -i "s|^DEVOPS_API_IMAGE=.*|DEVOPS_API_IMAGE=ghcr.io/tmk-computers/tmk-devops-api:${TMK_ARG_TAG}|" "$SCRIPT_DIR/.env" || true
     sed -i "s|^DEVOPS_WEB_IMAGE=.*|DEVOPS_WEB_IMAGE=ghcr.io/tmk-computers/tmk-devops-web:${TMK_ARG_TAG}|" "$SCRIPT_DIR/.env" || true
@@ -146,7 +195,7 @@ if [ -n "$TMK_ARG_TAG" ]; then
     echo -e "${GREEN}✅ Configured container images to use tag '${TMK_ARG_TAG}'.${NC}"
 fi
 
-if [ -n "$TMK_ARG_LICENSE" ]; then
+if [ -n "${TMK_ARG_LICENSE:-}" ]; then
     TMK_ARG_LICENSE=$(echo "$TMK_ARG_LICENSE" | sed -e 's/^[[:space:]"'\''"]*//' -e 's/[[:space:]"'\''"]*$//')
     set_env_val "TMK_LICENSE_KEY" "$TMK_ARG_LICENSE"
     echo -e "${GREEN}✅ Configured TMK_LICENSE_KEY from --license argument.${NC}"
@@ -168,6 +217,10 @@ if [ -f "$SCRIPT_DIR/.env" ]; then
         fi
     done < "$SCRIPT_DIR/.env"
 fi
+
+# Resolve placeholder hostnames before creating or starting any infrastructure.
+source "$SCRIPT_DIR/scripts/configure-domains.sh"
+configure_domains
 
 # Registry Authentication if credentials provided
 if [ -n "${DOCKER_REGISTRY_USER:-}" ] && [ -n "${DOCKER_REGISTRY_PASSWORD:-}" ]; then
@@ -214,7 +267,7 @@ if [ -d "$SCRIPT_DIR/volumes/license.key" ]; then
     rm -rf "$SCRIPT_DIR/volumes/license.key"
 fi
 if [ ! -f "$SCRIPT_DIR/volumes/license.key" ]; then
-    if [ -n "$TMK_LICENSE_KEY" ]; then
+    if [ -n "${TMK_LICENSE_KEY:-}" ]; then
         echo "$TMK_LICENSE_KEY" > "$SCRIPT_DIR/volumes/license.key"
     else
         touch "$SCRIPT_DIR/volumes/license.key"
@@ -236,6 +289,180 @@ chmod 600 "$SCRIPT_DIR/network/traefik/users.htpasswd"
 echo -e "${GREEN}✅ Traefik acme.json & users.htpasswd secured (chmod 600).${NC}"
 
 # 7. Start Infrastructure Services Conditionally Based on Topology
+# Return success when the requested TCP port has an active listener.
+is_port_in_use() {
+    local port="$1"
+    ss -H -ltn "sport = :$port" 2>/dev/null | grep -q .
+}
+
+# Match actual host port bindings and this installation's Compose identity.
+# Compose metadata also recognizes containers created before our role label existed.
+is_our_traefik_port() {
+    local port="$1" containers container metadata bindings role service name
+    local found=false
+    containers=$(docker ps -q) || return 1
+    for container in $containers; do
+        bindings=$(docker inspect --format '{{range $port, $bindings := .NetworkSettings.Ports}}{{range $bindings}}{{println .HostPort}}{{end}}{{end}}' "$container" 2>/dev/null) || return 1
+        if ! grep -qx "$port" <<< "$bindings"; then
+            continue
+        fi
+        name=$(docker inspect --format '{{.Name}}' "$container" 2>/dev/null | sed 's|^/||')
+        if [[ "$name" == "traefik_global" ]]; then
+            found=true
+            continue
+        fi
+        metadata=$(docker inspect --format '{{index .Config.Labels "com.tmk.vps-infra.role"}}|{{index .Config.Labels "com.docker.compose.service"}}' "$container" 2>/dev/null) || return 1
+        IFS='|' read -r role service <<< "$metadata"
+        if [[ "$service" == "traefik" || "$role" == "reverse-proxy" ]]; then
+            found=true
+            continue
+        fi
+        return 1
+    done
+    [[ "$found" == true ]]
+}
+
+# Display both system-process and Docker-container ownership information.
+show_port_owner() {
+    local port="$1"
+    local containers
+
+    echo -e "${YELLOW}Port ${port} ownership details:${NC}"
+    sudo ss -H -ltnp "sport = :$port" 2>/dev/null || true
+
+    containers="$(
+        docker ps \
+            --filter "publish=$port" \
+            --format '  Container: {{.Names}} | Image: {{.Image}} | Ports: {{.Ports}}'
+    )"
+
+    if [ -n "$containers" ]; then
+        echo "$containers"
+    fi
+}
+
+# Identify supported host web servers. Unknown workloads are never stopped.
+detect_system_web_server() {
+    local port="$1"
+    local process_info
+
+    process_info="$(sudo ss -H -ltnp "sport = :$port" 2>/dev/null || true)"
+
+    case "$process_info" in
+        *nginx*)   echo "nginx" ;;
+        *apache2*) echo "apache2" ;;
+        *httpd*)   echo "httpd" ;;
+        *caddy*)   echo "caddy" ;;
+        *)         return 1 ;;
+    esac
+}
+
+# Ask for permission before releasing ports 80/443 for Traefik.
+prepare_traefik_ports() {
+    local conflicting_ports=()
+    local services_to_stop=()
+    local unsupported_conflict=false
+    local port
+    local service
+    local answer
+
+    if ! command -v ss &> /dev/null; then
+        echo -e "${RED}❌ The 'ss' command is required to inspect ports 80 and 443.${NC}"
+        exit 1
+    fi
+
+    echo -e "${CYAN}▶ Checking ports required by Traefik...${NC}"
+
+    for port in 80 443; do
+        if is_port_in_use "$port"; then
+            if is_our_traefik_port "$port"; then
+                echo -e "${GREEN}✅ Port $port is already owned by this installation's Traefik.${NC}"
+                continue
+            fi
+            conflicting_ports+=("$port")
+            echo -e "${YELLOW}⚠️  Port $port is already in use.${NC}"
+            show_port_owner "$port"
+
+            service="$(detect_system_web_server "$port" || true)"
+            if [ -n "$service" ]; then
+                if [[ " ${services_to_stop[*]} " != *" $service "* ]]; then
+                    services_to_stop+=("$service")
+                fi
+            else
+                unsupported_conflict=true
+            fi
+        else
+            echo -e "${GREEN}✅ Port $port is available.${NC}"
+        fi
+    done
+
+    if [ "${#conflicting_ports[@]}" -eq 0 ]; then
+        echo -e "${GREEN}✅ Ports 80 and 443 are available or already owned by this installation's Traefik.${NC}"
+        return 0
+    fi
+
+    echo ""
+    echo -e "${YELLOW}${BOLD}Traefik requires host ports 80 and 443.${NC}"
+    echo "These ports receive HTTP and HTTPS traffic from the internet."
+    echo "Traefik cannot start while another service owns either port."
+    echo ""
+
+    if [ "$unsupported_conflict" = true ]; then
+        echo -e "${RED}❌ At least one required port is owned by an unsupported process or Docker container.${NC}"
+        echo "For safety, this script will not stop an unidentified workload."
+        echo "Stop or reconfigure the workload shown above, and then rerun this script."
+        exit 1
+    fi
+
+    echo -e "${YELLOW}Detected web service(s): ${services_to_stop[*]}${NC}"
+    echo -e "${RED}Warning: stopping these services may make existing websites unavailable.${NC}"
+    echo ""
+
+    if [[ "${TMK_ARG_YES:-false}" != "true" ]]; then
+        if [ ! -r /dev/tty ]; then
+            echo -e "${RED}❌ User confirmation is required, but no interactive terminal is available.${NC}"
+            echo -e "   Pass --yes to automatically approve stopping detected web services."
+            exit 1
+        fi
+
+        read -r -p "May this script stop these services and assign ports 80/443 to Traefik? [y/N]: " answer < /dev/tty
+
+        case "$answer" in
+            y|Y|yes|YES|Yes)
+                ;;
+            *)
+                echo -e "${RED}❌ Permission was not granted.${NC}"
+                echo "Deployment stopped without changing the existing web services."
+                exit 1
+                ;;
+        esac
+    fi
+
+    for service in "${services_to_stop[@]}"; do
+        echo -e "${YELLOW}▶ Stopping $service...${NC}"
+        if ! sudo systemctl stop "$service"; then
+            echo -e "${RED}❌ Failed to stop $service.${NC}"
+            exit 1
+        fi
+        echo -e "${GREEN}✅ Stopped $service.${NC}"
+    done
+
+    for port in 80 443; do
+        if is_port_in_use "$port" && ! is_our_traefik_port "$port"; then
+            echo -e "${RED}❌ Port $port is still occupied.${NC}"
+            show_port_owner "$port"
+            echo "Traefik cannot start until this port is released."
+            exit 1
+        fi
+    done
+
+    echo -e "${GREEN}✅ Ports 80 and 443 are now available for Traefik.${NC}"
+}
+
+# 7. Start Core Infrastructure Services
+echo -e "\n${CYAN}▶ Preparing HTTP and HTTPS ports for Traefik...${NC}"
+prepare_traefik_ports
+
 echo -e "\n${CYAN}▶ Starting Reverse Proxy (Traefik)...${NC}"
 docker compose -f "$SCRIPT_DIR/network/traefik/docker-compose.yml" --env-file "$SCRIPT_DIR/.env" up -d
 
@@ -262,6 +489,10 @@ fi
 
 echo -e "\n${CYAN}▶ Pulling and Starting Platform Services (Profile: ${COMPOSE_PROFILES})...${NC}"
 docker compose -f "$COMPOSE_FILE" --profile "$COMPOSE_PROFILES" --env-file "$SCRIPT_DIR/.env" up -d
+
+# Verify account creation before presenting the configured credentials.
+source "$SCRIPT_DIR/scripts/validate-admin.sh"
+validate_admin_account
 
 # 8. Print Completion Summary
 echo -e "\n${GREEN}${BOLD}======================================================================${NC}"
@@ -293,10 +524,16 @@ echo -e "  • Traefik Dashboard:     ${CYAN}https://${TRAEFIK_DASHBOARD_HOST:-t
 echo ""
 
 if [ "$DEPLOYMENT_MODE" != "ci-only" ]; then
-    echo -e "${BOLD}🔑 Initial Administrator Access:${NC}"
-    echo -e "  • SuperAdmin Email:      ${YELLOW}${SUPERADMIN_EMAIL:-admin@example.com}${NC}"
-    echo -e "  • SuperAdmin Password:   ${YELLOW}${SUPERADMIN_PASSWORD:-[Configured in .env]}${NC}"
+    echo -e "${BOLD}🔑 Configured Administrator Credentials:${NC}"
+    printf '  • SuperAdmin Email:      %s\n' "${SUPERADMIN_EMAIL:-admin@example.com}"
+    printf '  • SuperAdmin Password:   %s\n' "${SUPERADMIN_PASSWORD:-[Configured in .env]}"
+    print_admin_validation
     echo ""
+    if [[ "$ADMIN_VALIDATION_STATUS" != "found" && "$ADMIN_VALIDATION_STATUS" != "skipped" ]]; then
+        echo -e "${YELLOW}⚠️  Note: Initial superadmin account is still initializing or pending migrations.${NC}"
+        echo -e "${YELLOW}   Check container status with: docker logs devops-api-prod${NC}"
+        echo ""
+    fi
 fi
 
 echo -e "${BOLD}💡 Next Steps:${NC}"
@@ -308,7 +545,7 @@ elif [ "$DEPLOYMENT_MODE" = "devops-only" ]; then
     echo "  2. Point application domain DNS A-records to this host."
     echo "  3. Log in to DevOps Manager to deploy application microservices."
 else
-    echo "  1. Point your domain DNS A-records to this VPS public IP."
+    echo "  1. Verify DNS points to this VPS and HTTPS certificates are issued before logging in."
     echo "  2. Log in to the DevOps Manager to register your Products & microservices."
     echo "  3. Use templates in '$SCRIPT_DIR/templates' for new service deployments."
 fi
