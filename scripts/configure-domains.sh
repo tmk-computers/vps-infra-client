@@ -54,7 +54,7 @@ configure_domains() {
                 save_domain_value "$key" "$prefix.$domain" ;;
         esac
     done <<'HOSTS'
-DEVOPS_WEB_HOST devops-manager
+DEVOPS_WEB_HOST devops
 DEVOPS_API_HOST devops-api
 CI_WEB_HOST ci
 CI_API_HOST ci-api

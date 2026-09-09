@@ -140,7 +140,7 @@ Point the following **A Records** with your DNS provider (Cloudflare, Route53, G
 | Subdomain | Description | Example URL |
 |---|---|---|
 | `@` / `yourdomain.com` | Primary Landing / Gateway | `https://yourdomain.com` |
-| `devops-manager` | DevOps Management Web UI | `https://devops-manager.yourdomain.com` |
+| `devops` | DevOps Management Web UI | `https://devops.yourdomain.com` |
 | `devops-api` | DevOps Backend API | `https://devops-api.yourdomain.com` |
 | `ci` | CI/CD Dashboard | `https://ci.yourdomain.com` |
 | `ci-api` | CI/CD Build Engine API | `https://ci-api.yourdomain.com` |
@@ -255,7 +255,7 @@ cd /var/www/vps-infra
 ./activate-license.sh "YOUR_SIGNED_TMK_LICENSE_KEY"
 
 # Option B: Web UI Live Activation
-# Visit https://devops-manager.yourdomain.com -> Paste token in the lock screen modal -> Click Activate.
+# Visit https://devops.yourdomain.com -> Paste token in the lock screen modal -> Click Activate.
 ```
 
 ---

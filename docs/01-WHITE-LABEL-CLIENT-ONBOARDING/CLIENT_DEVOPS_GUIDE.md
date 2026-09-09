@@ -142,7 +142,7 @@ Configure the following **A Records** with your DNS provider (Cloudflare, Route5
 | Subdomain | Target | Purpose |
 |---|---|---|
 | `@` | `YOUR_SERVER_IP` | Primary Landing Page |
-| `devops-manager` | `YOUR_SERVER_IP` | DevOps Manager Web Dashboard |
+| `devops` | `YOUR_SERVER_IP` | DevOps Manager Web Dashboard |
 | `devops-api` | `YOUR_SERVER_IP` | DevOps Backend REST API |
 | `ci` | `YOUR_SERVER_IP` | CI/CD Build Pipeline Dashboard |
 | `ci-api` | `YOUR_SERVER_IP` | CI Build Webhooks & Artifact Streaming |
@@ -176,7 +176,7 @@ If a new client clones the repository and starts the framework without providing
    echo -n "TMK-HW-$(cat /etc/machine-id)" | sha256sum | awk '{print $1}'
 
    # Method 3 (From Web UI):
-   # Visit https://devops-manager.yourdomain.com -> Click "Copy Fingerprint" on the lock screen
+   # Visit https://devops.yourdomain.com -> Click "Copy Fingerprint" on the lock screen
    ```
 2. Send this fingerprint to **TMK Computers Licensing Team** (`licensing@tmkcomputers.in` or via your client account manager).
 3. TMK Computers issues your cryptographic `TMK_LICENSE_KEY`.

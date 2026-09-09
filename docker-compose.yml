@@ -92,9 +92,9 @@ services:
       - traefik_net
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.devops-web-prod-http.rule=Host(`${DEVOPS_WEB_HOST:-devops.example.com}`)"
+      - "traefik.http.routers.devops-web-prod-http.rule=Host(`${DEVOPS_WEB_HOST:-devops.example.com}`) || Host(`devops-manager.${PRIMARY_DOMAIN:-example.com}`)"
       - "traefik.http.routers.devops-web-prod-http.entrypoints=web"
-      - "traefik.http.routers.devops-web-prod.rule=Host(`${DEVOPS_WEB_HOST:-devops.example.com}`)"
+      - "traefik.http.routers.devops-web-prod.rule=Host(`${DEVOPS_WEB_HOST:-devops.example.com}`) || Host(`devops-manager.${PRIMARY_DOMAIN:-example.com}`)"
       - "traefik.http.routers.devops-web-prod.entrypoints=websecure"
       - "traefik.http.routers.devops-web-prod.tls=true"
       - "traefik.http.routers.devops-web-prod.tls.certresolver=myresolver"
