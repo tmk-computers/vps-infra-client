@@ -86,18 +86,25 @@ Save and exit (`Ctrl + O`, `Enter`, `Ctrl + X`).
 
 ## 🚀 4. Run 1-Click Bootstrap Installation
 
-Run the bootstrap installer to initialize Docker networks, configure volumes, and launch the platform:
+Run the bootstrap installer to initialize Docker networks, configure volumes, configure domains, and launch the platform:
 
 ```bash
 chmod +x setup.sh
-./setup.sh
+./setup.sh --domain "yourdomain.com"
 ```
 
 ### With Pre-Issued License Token:
-If you already received your enterprise license token, activate it during setup:
+If you already received your enterprise license token, activate it directly during setup:
 ```bash
-./setup.sh --license "YOUR_SIGNED_TMK_LICENSE_KEY"
+./setup.sh --domain "yourdomain.com" --license "YOUR_SIGNED_TMK_LICENSE_KEY"
 ```
+
+### What Setup Automatically Performs:
+* **Domain Validation**: Auto-configures all subdomains (`devops.yourdomain.com`, `ci.yourdomain.com`, `registry.yourdomain.com`, etc.).
+* **PostgreSQL Readiness Gate**: Polls `pg_isready` before starting platform containers to ensure the database engine is fully ready and SuperAdmin user seeding succeeds reliably on cold boot.
+* **Automated Log Rotation**: Sets Docker daemon log options in `/etc/docker/daemon.json` (`max-size: 50m`, `max-file: 3`) to prevent logs from consuming disk storage.
+* **Automated System Crons**: Schedules daily maintenance tasks in `/etc/cron.d/vps-infra-maintenance` (storage cleanup at 3:00 AM IST, registry tag prune at 3:30 AM IST, and backup retention at 4:00 AM IST).
+* **Registry Authentication**: Pre-authenticates Docker with your private or external registry.
 
 ---
 
@@ -112,6 +119,7 @@ docker compose ps
 Visit the following URLs in your browser:
 * **DevOps Manager UI**: `https://devops.yourdomain.com`
 * **CI/CD Dashboard**: `https://ci.yourdomain.com`
+* **Private Registry**: `https://registry.yourdomain.com`
 * **Traefik Edge Routing**: `https://traefik.yourdomain.com`
 
 Log in using your `SUPERADMIN_EMAIL` and `SUPERADMIN_PASSWORD`.

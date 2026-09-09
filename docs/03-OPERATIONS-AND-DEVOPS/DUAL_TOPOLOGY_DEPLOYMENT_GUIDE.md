@@ -136,6 +136,14 @@ The platform supports both self-hosted and external Docker registries.
 - Accessible via Traefik at `https://${REGISTRY_HOST}` (e.g., `https://registry.yourdomain.com`).
 - On an All-in-One deployment, both builds and deployments interact with `localhost:5000` or the public domain.
 - In a Distributed deployment, Machine A or a dedicated node hosts the registry; Machine B pulls images over HTTPS using configured registry credentials.
+- **Default Authentication**:
+  ```bash
+  DOCKER_REGISTRY_TYPE=private
+  DOCKER_REGISTRY_HOST=localhost:5000 # or registry.yourdomain.com
+  DOCKER_REGISTRY_USER=admin
+  DOCKER_REGISTRY_PASSWORD=tmkregistry2026
+  ```
+- **Automated Login Safeguards**: `setup.sh` automatically executes `docker login` for `REG_TARGET`, `localhost:5000`, and `127.0.0.1:5000`. The CI runner verifies authentication before pushing images, ensuring push operations never fail with `no basic auth credentials`.
 
 ### Option B: External Docker Registry (GHCR, Docker Hub, ECR)
 - Build artifacts are pushed directly to GitHub Container Registry (`ghcr.io/org/...`), Docker Hub, or AWS ECR.

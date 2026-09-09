@@ -91,3 +91,36 @@ networks:
 3. Select **Application Type: Web Application**.
 4. Enter your Git URL, branch, and public hostname (`app.yourdomain.com`).
 5. Click **"Deploy"**. The app goes live at `https://app.yourdomain.com` in seconds.
+
+---
+
+## 🧪 Step 5: Automated Unit & Component Testing with Code Coverage
+
+VPS-Infra CI Server automatically detects and runs frontend tests during build execution:
+
+### 1. Supported Test Frameworks & Detection:
+If your `package.json` contains a `test:coverage`, `test:unit`, or `test` script using **Vitest** or **Jest**:
+```json
+{
+  "scripts": {
+    "test": "vitest run",
+    "test:coverage": "vitest run --coverage"
+  }
+}
+```
+
+### 2. Multi-Stage Dockerfile Test Results Export:
+To enable instantaneous test result and code coverage extraction, your `Dockerfile` can include the test run and backup layers:
+```dockerfile
+# Run Vitest unit & component tests with coverage and json reporting
+RUN mkdir -p test-results && (npx vitest run --coverage --reporter=json --outputFile=test-results/vitest-results.json || npm run test)
+
+# In the final runtime stage, export backup directories:
+COPY --from=build /app/coverage /coverage_backup
+COPY --from=build /app/test-results /test_results_backup
+```
+
+### 3. Automated Ingestion & Reporting:
+* **Test Case Ingestion**: The CI runner parses `test-results/vitest-results.json` and records each individual test case, suite name, duration, and failure message directly into the `ci_build_tests` database table.
+* **Code Coverage Verification**: The coverage engine parses `coverage/lcov.info` using its native LCOV parser, records the overall line coverage percentage, and enforces your project's configured coverage thresholds.
+* **Workspace Cleanliness**: The CI runner automatically purges test report folders (`playwright-report`, `test-results`, `coverage`) after ingestion and executes hard resets on git pull, ensuring future builds never fail due to local merge conflicts.

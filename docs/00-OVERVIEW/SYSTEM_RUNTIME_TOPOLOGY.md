@@ -157,3 +157,43 @@ All application data, databases, secrets, and build artifacts persist in host di
    - Every registered subdomain receives a dedicated SSL certificate via Let's Encrypt ACME HTTP-01 challenge.
 3. **Data Sovereignty**:
    - **100% of your data remains on your VPS**. No database records or customer uploads are sent to third-party clouds.
+
+---
+
+## ⚙️ Automated Lifecycle & Maintenance Architecture
+
+VPS-Infra operates a self-maintaining operational model configured during initial `./setup.sh` bootstrap:
+
+### 1. Automated System Crons (`/etc/cron.d/vps-infra-maintenance`)
+System cron jobs are automatically provisioned during setup to protect VPS disk space:
+* **03:00 IST Daily — Storage Cleanup (`scripts/clean-storage.sh`)**:
+  - Prunes stopped containers, orphan volumes, dangling networks, and unused Docker images.
+  - Clears Docker BuildKit builder cache to reclaim space from intensive builds.
+* **03:30 IST Daily — Docker Registry Tag Prune (`scripts/prune-registry-tags.sh`)**:
+  - Retains the latest 5 build tags per project repository.
+  - Deletes expired image manifests and triggers internal registry garbage collection.
+* **04:00 IST Daily — Database Backup Retention (`scripts/prune-backups.sh`)**:
+  - Automatically deletes `.sql.gz` database dumps older than the configured retention threshold (default: 30 days).
+
+### 2. Docker Daemon Log Rotation (`/etc/docker/daemon.json`)
+The setup engine configures global log size limits for all containers:
+```json
+{
+  "log-driver": "json-file",
+  "log-opts": {
+    "max-size": "50m",
+    "max-file": "3"
+  }
+}
+```
+This guarantees that container logs never exceed 150MB per service on disk.
+
+### 3. Database Cold-Start Health Gates
+During startup, `setup.sh` verifies PostgreSQL connectivity using `pg_isready` before launching dependent API services. This guarantees:
+* Identity tables (`AspNetUsers`, `AspNetRoles`) and seed data are provisioned cleanly without connection timeouts.
+* Application services (`devops-api-prod`, `ci-api-prod`) never enter crash-loop states on cold VPS reboots.
+
+### 4. Continuous Integration Registry Authentication Safeguards
+* CI runner containers mount host Docker credentials (`/root/.docker`) with read-write permissions.
+* The build runner automatically executes Docker login against the target registry before image pushes, falling back to session-isolated credentials if needed.
+* Prior to checking out branches, the runner performs `git reset --hard` and cleanups, eliminating git merge collisions from leftover test artifacts.

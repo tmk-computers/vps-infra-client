@@ -46,10 +46,10 @@ flowchart TD
 
 ### 📦 Pre-Built Container Image Distribution:
 All core services are distributed as pre-compiled, production-hardened container images via GitHub Container Registry (`ghcr.io`). **No compilers, SDKs, or raw source code are required on the host server**:
-* `ghcr.io/tmk-computers/tmk-devops-api:v2.1`
-* `ghcr.io/tmk-computers/tmk-devops-web:v2.1`
-* `ghcr.io/tmk-computers/tmk-ci-api:v2.1`
-* `ghcr.io/tmk-computers/tmk-ci-web:v2.1`
+* `ghcr.io/tmk-computers/tmk-devops-api:latest`
+* `ghcr.io/tmk-computers/tmk-devops-web:latest`
+* `ghcr.io/tmk-computers/tmk-ci-api:latest`
+* `ghcr.io/tmk-computers/tmk-ci-web:latest`
 
 ---
 
@@ -98,11 +98,13 @@ ACME_SSL_EMAIL=admin@yourdomain.com
 SUPERADMIN_EMAIL=admin@yourdomain.com
 SUPERADMIN_PASSWORD=YourSecureSuperAdminPassword123!
 
-# 4. DEPLOYMENT TOPOLOGY & REGISTRY (Section 9)
+# 4. DEPLOYMENT TOPOLOGY & REGISTRY
 DEPLOYMENT_MODE=all-in-one          # all-in-one | devops-only | ci-only
 COMPOSE_PROFILES=all               # all | devops | ci
 DOCKER_REGISTRY_TYPE=private       # private | external
-DOCKER_REGISTRY_HOST=localhost:5000 # or ghcr.io/your-org
+DOCKER_REGISTRY_HOST=localhost:5000 # or ghcr.io/your-org or registry.yourdomain.com
+DOCKER_REGISTRY_USER=admin         # Default for private registry
+DOCKER_REGISTRY_PASSWORD=tmkregistry2026
 SYNC_MODE=api                      # api (REST Sync) | db (Direct DB)
 CI_SECRET=SuperCiSecretKey123!     # Shared token for cross-machine REST sync
 
@@ -117,10 +119,20 @@ chmod +x setup.sh
 ./setup.sh
 ```
 
+#### What `setup.sh` Automatically Provisions:
+1. **Interactive Domain Discovery**: Validates your primary domain (`yourdomain.com`) and automatically derives all service hostnames (`devops.yourdomain.com`, `ci.yourdomain.com`, `registry.yourdomain.com`, etc.).
+2. **PostgreSQL Cold-Start Readiness**: Waits for PostgreSQL to be healthy and accepting connections before starting platform application services, ensuring seamless SuperAdmin seeding.
+3. **Docker Log Rotation**: Automatically writes `/etc/docker/daemon.json` (`max-size: 50m`, `max-file: 3`) and restarts the Docker service to prevent container log growth from filling VPS storage.
+4. **Registry Authentication**: Pre-authenticates the Docker daemon with `REG_TARGET`, `localhost:5000`, and `127.0.0.1:5000`.
+5. **Automated System Maintenance Crons**: Installs `/etc/cron.d/vps-infra-maintenance` to run:
+   - **Daily at 3:00 AM IST**: Disk & builder cache prune (`scripts/clean-storage.sh`).
+   - **Daily at 3:30 AM IST**: Docker Registry tag prune keeping latest 5 tags per repo (`scripts/prune-registry-tags.sh`).
+   - **Daily at 4:00 AM IST**: Automated database backup retention prune (`scripts/prune-backups.sh`).
+
 > **Automated Deployment Options**:
 > - **All-in-One (Single VPS)**:
 >   ```bash
->   ./setup.sh --mode all-in-one --license "YOUR_LICENSE_KEY"
+>   ./setup.sh --mode all-in-one --domain "yourdomain.com" --license "YOUR_LICENSE_KEY"
 >   ```
 > - **Distributed Machine A (Dedicated CI Server)**:
 >   ```bash
