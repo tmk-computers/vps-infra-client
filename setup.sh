@@ -272,11 +272,13 @@ source "$SCRIPT_DIR/scripts/configure-domains.sh"
 configure_domains
 
 # Registry Authentication if credentials provided
-if [ -n "${DOCKER_REGISTRY_USER:-}" ] && [ -n "${DOCKER_REGISTRY_PASSWORD:-}" ]; then
+REG_AUTH_USER="${DOCKER_REGISTRY_USER:-${REGISTRY_USER:-}}"
+REG_AUTH_PASS="${DOCKER_REGISTRY_PASSWORD:-${REGISTRY_PASSWORD:-}}"
+if [ -n "$REG_AUTH_USER" ] && [ -n "$REG_AUTH_PASS" ]; then
     REG_TARGET="${DOCKER_REGISTRY_HOST:-${REGISTRY_HOST:-}}"
     if [ -n "$REG_TARGET" ]; then
         echo -e "${CYAN}▶ Authenticating Docker with registry ${REG_TARGET}...${NC}"
-        echo "$DOCKER_REGISTRY_PASSWORD" | docker login "$REG_TARGET" -u "$DOCKER_REGISTRY_USER" --password-stdin || {
+        echo "$REG_AUTH_PASS" | docker login "$REG_TARGET" -u "$REG_AUTH_USER" --password-stdin || {
             echo -e "${YELLOW}⚠️ Docker login failed. Please verify your registry credentials.${NC}"
         }
     fi
@@ -529,11 +531,42 @@ elif [ "${DOCKER_REGISTRY_TYPE:-}" = "external" ]; then
     echo -e "\n${YELLOW}▶ Skipping local Docker Registry container (Using External Registry: ${DOCKER_REGISTRY_HOST:-$REGISTRY_HOST}).${NC}"
 fi
 
+# Ensure Docker daemon is authenticated with active registry
+REG_LOGIN_USER="${DOCKER_REGISTRY_USER:-${REGISTRY_USER:-}}"
+REG_LOGIN_PASS="${DOCKER_REGISTRY_PASSWORD:-${REGISTRY_PASSWORD:-}}"
+REG_LOGIN_TARGET="${DOCKER_REGISTRY_HOST:-${REGISTRY_HOST:-localhost:5000}}"
+
+if [ "${DOCKER_REGISTRY_TYPE:-private}" = "private" ]; then
+    REG_LOGIN_USER="${REG_LOGIN_USER:-admin}"
+    REG_LOGIN_PASS="${REG_LOGIN_PASS:-tmkregistry2026}"
+fi
+
+if [ -n "$REG_LOGIN_USER" ] && [ -n "$REG_LOGIN_PASS" ]; then
+    echo -e "\n${CYAN}▶ Authenticating Docker with registry (${REG_LOGIN_TARGET})...${NC}"
+    echo "$REG_LOGIN_PASS" | docker login "$REG_LOGIN_TARGET" -u "$REG_LOGIN_USER" --password-stdin 2>/dev/null || true
+    if [ "$REG_LOGIN_TARGET" != "localhost:5000" ]; then
+        echo "$REG_LOGIN_PASS" | docker login "localhost:5000" -u "$REG_LOGIN_USER" --password-stdin 2>/dev/null || true
+        echo "$REG_LOGIN_PASS" | docker login "127.0.0.1:5000" -u "$REG_LOGIN_USER" --password-stdin 2>/dev/null || true
+    fi
+fi
+
 # Detect compose file
 if [ -f "$SCRIPT_DIR/docker-compose.yml" ]; then
     COMPOSE_FILE="$SCRIPT_DIR/docker-compose.yml"
 elif [ -f "$SCRIPT_DIR/docker-compose.uat.yml" ]; then
     COMPOSE_FILE="$SCRIPT_DIR/docker-compose.uat.yml"
+fi
+
+# Ensure PostgreSQL has initialized and is accepting connections before launching application services
+if [ "$DEPLOYMENT_MODE" != "ci-only" ]; then
+    echo -e "\n${CYAN}▶ Waiting for PostgreSQL to be ready before starting platform services...${NC}"
+    for ((attempt = 1; attempt <= 30; attempt++)); do
+        if docker exec shared_postgres pg_isready -U "${POSTGRES_USER:-postgres}" -d "${POSTGRES_DB:-devops_prod}" &>/dev/null; then
+            echo -e "${GREEN}✅ PostgreSQL is ready and accepting connections.${NC}"
+            break
+        fi
+        sleep 2
+    done
 fi
 
 echo -e "\n${CYAN}▶ Pulling and Starting Platform Services (Profile: ${COMPOSE_PROFILES})...${NC}"

@@ -67,8 +67,19 @@ HOSTS
     case "${ACME_SSL_EMAIL:-}" in
         ''|*@yourdomain.com|*@example.com) save_domain_value ACME_SSL_EMAIL "admin@$domain" ;;
     esac
+    case "${SUPERADMIN_EMAIL:-}" in
+        ''|*@yourdomain.com|*@example.com) save_domain_value SUPERADMIN_EMAIL "admin@$domain" ;;
+    esac
     echo "Domain configuration saved. Ensure these hostnames resolve to this VPS before certificate issuance:"
     for key in DEVOPS_WEB_HOST DEVOPS_API_HOST CI_WEB_HOST CI_API_HOST REGISTRY_HOST PGADMIN_HOST TRAEFIK_DASHBOARD_HOST; do
         echo "  $key=${!key}"
     done
+
+    # Keep Docker authentication updated for configured registry host
+    local reg_login_user="${DOCKER_REGISTRY_USER:-${REGISTRY_USER:-admin}}"
+    local reg_login_pass="${DOCKER_REGISTRY_PASSWORD:-${REGISTRY_PASSWORD:-tmkregistry2026}}"
+    local reg_login_target="${REGISTRY_HOST:-registry.$domain}"
+    if docker info &>/dev/null; then
+        echo "$reg_login_pass" | docker login "$reg_login_target" -u "$reg_login_user" --password-stdin 2>/dev/null || true
+    fi
 }

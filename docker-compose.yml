@@ -4,7 +4,7 @@ services:
   # ------------------------------------------------------------
   devops-api-prod:
     profiles: ["all", "devops"]
-    image: ${DEVOPS_API_IMAGE:-ghcr.io/tmk-computers/tmk-devops-api:v2.3}
+    image: ${DEVOPS_API_IMAGE:-ghcr.io/tmk-computers/tmk-devops-api:latest}
     container_name: devops-api-prod
     restart: always
     environment:
@@ -85,7 +85,7 @@ services:
   # ------------------------------------------------------------
   devops-web-prod:
     profiles: ["all", "devops"]
-    image: ${DEVOPS_WEB_IMAGE:-ghcr.io/tmk-computers/tmk-devops-web:v2.3}
+    image: ${DEVOPS_WEB_IMAGE:-ghcr.io/tmk-computers/tmk-devops-web:latest}
     container_name: devops-web-prod
     restart: always
     networks:
@@ -105,7 +105,7 @@ services:
   # ------------------------------------------------------------
   ci-api-prod:
     profiles: ["all", "ci"]
-    image: ${CI_API_IMAGE:-ghcr.io/tmk-computers/tmk-ci-api:v2.3}
+    image: ${CI_API_IMAGE:-ghcr.io/tmk-computers/tmk-ci-api:latest}
     container_name: ci-api-prod
     restart: always
     environment:
@@ -115,13 +115,16 @@ services:
       - CI_API_PUBLIC_URL=https://${CI_API_HOST:-ci-api.example.com}
       - DEVOPS_API_PUBLIC_URL=https://${DEVOPS_API_HOST:-devops-api.example.com}
       - DOCKER_REGISTRY_HOST=${DOCKER_REGISTRY_HOST:-${REGISTRY_HOST:-localhost:5000}}
+      - DOCKER_REGISTRY_USER=${DOCKER_REGISTRY_USER:-${REGISTRY_USER:-admin}}
+      - DOCKER_REGISTRY_PASSWORD=${DOCKER_REGISTRY_PASSWORD:-${REGISTRY_PASSWORD:-tmkregistry2026}}
+      - DOCKER_REGISTRY_TYPE=${DOCKER_REGISTRY_TYPE:-private}
       - SYNC_MODE=${SYNC_MODE:-db}
       - CI_SECRET=${CI_SECRET:-SuperCiSecretKey123!}
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - /var/www:/var/www
       - /root/.ssh:/root/.ssh:ro
-      - /root/.docker:/root/.docker:ro
+      - /root/.docker:/root/.docker
     networks:
       - traefik_net
     labels:
@@ -139,7 +142,7 @@ services:
   # ------------------------------------------------------------
   ci-web-prod:
     profiles: ["all", "ci"]
-    image: ${CI_WEB_IMAGE:-ghcr.io/tmk-computers/tmk-ci-web:v2.3}
+    image: ${CI_WEB_IMAGE:-ghcr.io/tmk-computers/tmk-ci-web:latest}
     container_name: ci-web-prod
     restart: always
     networks:
