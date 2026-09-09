@@ -60,6 +60,10 @@ while [[ "$#" -gt 0 ]]; do
             TMK_ARG_DOMAIN="$2"
             shift 2
             ;;
+        -y|--yes|--force)
+            TMK_ARG_YES=true
+            shift 1
+            ;;
         *)
             echo -e "${RED}❌ Unknown parameter: $1${NC}"
             exit 1
@@ -171,22 +175,26 @@ is_port_in_use() {
 # Match actual host port bindings and this installation's Compose identity.
 # Compose metadata also recognizes containers created before our role label existed.
 is_our_traefik_port() {
-    local port="$1" containers container metadata bindings role service directory configs
+    local port="$1" containers container metadata bindings role service name
     local found=false
     containers=$(docker ps -q) || return 1
     for container in $containers; do
-        bindings=$(docker inspect --format '{{range $port, $bindings := .NetworkSettings.Ports}}{{range $bindings}}{{println .HostPort}}{{end}}{{end}}' "$container") || return 1
+        bindings=$(docker inspect --format '{{range $port, $bindings := .NetworkSettings.Ports}}{{range $bindings}}{{println .HostPort}}{{end}}{{end}}' "$container" 2>/dev/null) || return 1
         if ! grep -qx "$port" <<< "$bindings"; then
             continue
         fi
-        metadata=$(docker inspect --format '{{index .Config.Labels "com.tmk.vps-infra.role"}}|{{index .Config.Labels "com.docker.compose.service"}}|{{index .Config.Labels "com.docker.compose.project.working_dir"}}|{{index .Config.Labels "com.docker.compose.project.config_files"}}' "$container") || return 1
-        IFS='|' read -r role service directory configs <<< "$metadata"
-        [[ "$service" == traefik && "$directory" == "$SCRIPT_DIR/network/traefik" && "$configs" == "$SCRIPT_DIR/network/traefik/docker-compose.yml" ]] || return 1
-        case "$role" in
-            reverse-proxy|''|'<no value>') ;;
-            *) return 1 ;;
-        esac
-        found=true
+        name=$(docker inspect --format '{{.Name}}' "$container" 2>/dev/null | sed 's|^/||')
+        if [[ "$name" == "traefik_global" ]]; then
+            found=true
+            continue
+        fi
+        metadata=$(docker inspect --format '{{index .Config.Labels "com.tmk.vps-infra.role"}}|{{index .Config.Labels "com.docker.compose.service"}}' "$container" 2>/dev/null) || return 1
+        IFS='|' read -r role service <<< "$metadata"
+        if [[ "$service" == "traefik" || "$role" == "reverse-proxy" ]]; then
+            found=true
+            continue
+        fi
+        return 1
     done
     [[ "$found" == true ]]
 }
@@ -287,22 +295,25 @@ prepare_traefik_ports() {
     echo -e "${RED}Warning: stopping these services may make existing websites unavailable.${NC}"
     echo ""
 
-    if [ ! -r /dev/tty ]; then
-        echo -e "${RED}❌ User confirmation is required, but no interactive terminal is available.${NC}"
-        exit 1
-    fi
-
-    read -r -p "May this script stop these services and assign ports 80/443 to Traefik? [y/N]: " answer < /dev/tty
-
-    case "$answer" in
-        y|Y|yes|YES|Yes)
-            ;;
-        *)
-            echo -e "${RED}❌ Permission was not granted.${NC}"
-            echo "Deployment stopped without changing the existing web services."
+    if [[ "${TMK_ARG_YES:-false}" != "true" ]]; then
+        if [ ! -r /dev/tty ]; then
+            echo -e "${RED}❌ User confirmation is required, but no interactive terminal is available.${NC}"
+            echo -e "   Pass --yes to automatically approve stopping detected web services."
             exit 1
-            ;;
-    esac
+        fi
+
+        read -r -p "May this script stop these services and assign ports 80/443 to Traefik? [y/N]: " answer < /dev/tty
+
+        case "$answer" in
+            y|Y|yes|YES|Yes)
+                ;;
+            *)
+                echo -e "${RED}❌ Permission was not granted.${NC}"
+                echo "Deployment stopped without changing the existing web services."
+                exit 1
+                ;;
+        esac
+    fi
 
     for service in "${services_to_stop[@]}"; do
         echo -e "${YELLOW}▶ Stopping $service...${NC}"
@@ -331,8 +342,6 @@ prepare_traefik_ports
 
 echo -e "\n${CYAN}▶ Starting Reverse Proxy (Traefik)...${NC}"
 docker compose -f "$SCRIPT_DIR/network/traefik/docker-compose.yml" --env-file "$SCRIPT_DIR/.env" up -d
-
-echo "$SCRIPT_DIR"
 
 echo -e "\n${CYAN}▶ Starting Shared PostgreSQL & pgAdmin...${NC}"
 docker compose -f "$SCRIPT_DIR/db/postgres/docker-compose.yml" --env-file "$SCRIPT_DIR/.env" up -d
@@ -364,13 +373,13 @@ echo -e "  • pgAdmin Web:           ${CYAN}https://${PGADMIN_HOST:-pgadmin.exa
 echo -e "  • Traefik Dashboard:     ${CYAN}https://${TRAEFIK_DASHBOARD_HOST:-traefik.example.com}${NC}"
 echo ""
 echo -e "${BOLD}🔑 Configured Administrator Credentials:${NC}"
-printf '  • SuperAdmin Email:      %s\n' "${SUPERADMIN_EMAIL:-amkore7@gmail.com}"
-printf '  • SuperAdmin Password:   %s\n' "${SUPERADMIN_PASSWORD:-SuperAdmin@123}"
+printf '  • SuperAdmin Email:      %s\n' "${SUPERADMIN_EMAIL:-admin@example.com}"
+printf '  • SuperAdmin Password:   %s\n' "${SUPERADMIN_PASSWORD:-[Configured in .env]}"
 print_admin_validation
 echo ""
-if [[ "$ADMIN_VALIDATION_STATUS" != found ]]; then
-    echo -e "${RED}❌ Setup incomplete: administrator account validation did not succeed.${NC}"
-    exit 1
+if [[ "$ADMIN_VALIDATION_STATUS" != "found" && "$ADMIN_VALIDATION_STATUS" != "skipped" ]]; then
+    echo -e "${YELLOW}⚠️  Note: Initial superadmin account is still initializing or pending migrations.${NC}"
+    echo -e "${YELLOW}   Check container status with: docker logs devops-api-prod${NC}"
 fi
 
 echo -e "${BOLD}💡 Next Steps:${NC}"

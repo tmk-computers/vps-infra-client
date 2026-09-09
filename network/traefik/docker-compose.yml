@@ -60,4 +60,4 @@ services:
 networks:
   traefik_net:
     name: traefik_net
-    external : true
+    external: true

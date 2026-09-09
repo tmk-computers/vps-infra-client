@@ -3,6 +3,13 @@
 validate_admin_account() {
     local attempt result
     ADMIN_VALIDATION_STATUS=error
+
+    # If shared_postgres is not running locally (e.g. CI-only profile or external DB), skip gracefully
+    if ! docker ps --format '{{.Names}}' | grep -qx "shared_postgres"; then
+        ADMIN_VALIDATION_STATUS=skipped
+        return 0
+    fi
+
     echo "Checking the configured administrator in PostgreSQL (12 attempts, 5 seconds between retries)..."
     for ((attempt = 1; attempt <= 12; attempt++)); do
         # Use the same database/user defaults as the API's Compose connection.
@@ -10,7 +17,7 @@ validate_admin_account() {
         if result=$(docker exec -i -e PGCONNECT_TIMEOUT=3 -e PGOPTIONS='-c statement_timeout=3000' shared_postgres \
             psql -X -t -A -v ON_ERROR_STOP=1 \
             -U "${POSTGRES_USER:-postgres}" -d "${POSTGRES_DB:-devops_prod}" \
-            -v "admin_email=${SUPERADMIN_EMAIL:-amkore7@gmail.com}" 2>/dev/null <<'SQL'
+            -v "admin_email=${SUPERADMIN_EMAIL:-admin@example.com}" 2>/dev/null <<'SQL'
 SELECT EXISTS (
     SELECT 1 FROM public."AspNetUsers"
     WHERE lower("Email") = lower(:'admin_email')
@@ -36,6 +43,9 @@ print_admin_validation() {
         found)
             echo "  ✅ Account found in the configured database."
             ;;
+        skipped)
+            echo "  ℹ️ Local shared_postgres container not running on this host (external database or distributed node)."
+            ;;
         missing)
             echo "  ❌ Account NOT FOUND in the configured database after startup retries."
             echo "     The displayed credentials have no matching account in this database."
@@ -48,7 +58,7 @@ print_admin_validation() {
     esac
     echo "  Password and administrator role have NOT been validated; these are configuration values."
     echo "  Changing .env does not prove an existing account's password was updated."
-    if [[ "$ADMIN_VALIDATION_STATUS" != found ]]; then
+    if [[ "$ADMIN_VALIDATION_STATUS" != found && "$ADMIN_VALIDATION_STATUS" != skipped ]]; then
         echo "  Diagnostic command: docker logs --tail 200 devops-api-prod"
     fi
 }

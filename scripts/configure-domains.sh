@@ -29,10 +29,10 @@ configure_domains() {
     local domain="${TMK_ARG_DOMAIN:-${PRIMARY_DOMAIN:-}}" key prefix value
     if ! valid_domain "$domain"; then
         if [[ -n "${TMK_ARG_DOMAIN:-}" || ! -t 0 ]]; then
-            echo "A real primary domain is required. Run ./setup.sh --domain rentsort.com (use your own domain)." >&2
+            echo "A real primary domain is required. Run ./setup.sh --domain company.com (use your own domain)." >&2
             return 1
         fi
-        read -r -p "Primary domain (for example, rentsort.com): " domain
+        read -r -p "Primary domain (for example, company.com): " domain
         valid_domain "$domain" || { echo "Invalid primary domain: $domain" >&2; return 1; }
     fi
 

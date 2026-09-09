@@ -161,7 +161,7 @@ For unattended setup, supply the domain explicitly (or set `PRIMARY_DOMAIN` in
 `.env` first):
 
 ```bash
-./setup.sh --domain rentsort.com --license "YOUR_SIGNED_TMK_LICENSE_KEY"
+./setup.sh --domain company.com --license "YOUR_SIGNED_TMK_LICENSE_KEY"
 ```
 
 Use your own domain. Setup refuses to start services with missing or invalid
