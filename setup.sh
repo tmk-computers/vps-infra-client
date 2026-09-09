@@ -368,12 +368,13 @@ printf '  • SuperAdmin Email:      %s\n' "${SUPERADMIN_EMAIL:-amkore7@gmail.co
 printf '  • SuperAdmin Password:   %s\n' "${SUPERADMIN_PASSWORD:-SuperAdmin@123}"
 print_admin_validation
 echo ""
+if [[ "$ADMIN_VALIDATION_STATUS" != found ]]; then
+    echo -e "${RED}❌ Setup incomplete: administrator account validation did not succeed.${NC}"
+    exit 1
+fi
+
 echo -e "${BOLD}💡 Next Steps:${NC}"
 echo "  1. Verify DNS points to this VPS and HTTPS certificates are issued before logging in."
-if [[ "$ADMIN_VALIDATION_STATUS" == found ]]; then
-    echo "  2. Test login to the DevOps Manager, then register your Products & microservices."
-else
-    echo "  2. Resolve administrator account validation above before attempting login."
-fi
+echo "  2. Test login to the DevOps Manager, then register your Products & microservices."
 echo "  3. Use templates in '$SCRIPT_DIR/templates' for new service deployments."
 echo -e "${GREEN}======================================================================${NC}\n"
