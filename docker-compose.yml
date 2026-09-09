@@ -4,7 +4,7 @@ services:
   # ------------------------------------------------------------
   devops-api-prod:
     profiles: ["all", "devops"]
-    image: ${DEVOPS_API_IMAGE:-ghcr.io/tmk-computers/tmk-devops-api:v2.2}
+    image: ${DEVOPS_API_IMAGE:-ghcr.io/tmk-computers/tmk-devops-api:v2.3}
     container_name: devops-api-prod
     restart: always
     environment:
@@ -19,7 +19,7 @@ services:
       # Dynamic JWT & SuperAdmin Settings
       - JwtSettings__Issuer=https://${DEVOPS_API_HOST:-devops-api.example.com}
       - JwtSettings__Audience=https://${DEVOPS_API_HOST:-devops-api.example.com}
-      - SeedData__SuperAdmin__Email=${SUPERADMIN_EMAIL:-amkore7@gmail.com}
+      - SeedData__SuperAdmin__Email=${SUPERADMIN_EMAIL:-admin@example.com}
       - SeedData__SuperAdmin__Password=${SUPERADMIN_PASSWORD:-SuperAdmin@123}
       - SeedData__SuperAdmin__FullName=${SUPERADMIN_FULLNAME:-Super Admin}
 
@@ -85,7 +85,7 @@ services:
   # ------------------------------------------------------------
   devops-web-prod:
     profiles: ["all", "devops"]
-    image: ${DEVOPS_WEB_IMAGE:-ghcr.io/tmk-computers/tmk-devops-web:v2.2}
+    image: ${DEVOPS_WEB_IMAGE:-ghcr.io/tmk-computers/tmk-devops-web:v2.3}
     container_name: devops-web-prod
     restart: always
     networks:
@@ -105,7 +105,7 @@ services:
   # ------------------------------------------------------------
   ci-api-prod:
     profiles: ["all", "ci"]
-    image: ${CI_API_IMAGE:-ghcr.io/tmk-computers/tmk-ci-api:v2.2}
+    image: ${CI_API_IMAGE:-ghcr.io/tmk-computers/tmk-ci-api:v2.3}
     container_name: ci-api-prod
     restart: always
     environment:
@@ -139,7 +139,7 @@ services:
   # ------------------------------------------------------------
   ci-web-prod:
     profiles: ["all", "ci"]
-    image: ${CI_WEB_IMAGE:-ghcr.io/tmk-computers/tmk-ci-web:v2.2}
+    image: ${CI_WEB_IMAGE:-ghcr.io/tmk-computers/tmk-ci-web:v2.3}
     container_name: ci-web-prod
     restart: always
     networks:
