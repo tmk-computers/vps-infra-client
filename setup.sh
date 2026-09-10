@@ -33,6 +33,22 @@ if ! docker compose version &> /dev/null; then
 fi
 echo -e "${GREEN}✅ Docker & Docker Compose detected.${NC}"
 
+# Check daemon access before making any host configuration changes.
+if DOCKER_ACCESS_ERROR=$(docker info 2>&1); then
+    unset DOCKER_ACCESS_ERROR
+else
+    printf '%s\n' "$DOCKER_ACCESS_ERROR" >&2
+    if [[ "$DOCKER_ACCESS_ERROR" == *"permission denied"* ]]; then
+        echo -e "${RED}❌ Your user does not have permission to access Docker.${NC}" >&2
+        echo 'Run this command to add your current user to the Docker group and refresh group membership:' >&2
+        echo '  sudo usermod -aG docker "$USER" && newgrp docker' >&2
+        echo 'Then rerun setup with the same arguments, for example: bash setup.sh' >&2
+    else
+        echo -e "${RED}❌ Cannot connect to Docker. Check that the Docker daemon is running, then rerun setup.${NC}" >&2
+    fi
+    exit 1
+fi
+
 # 1.1 Configure Docker Log Rotation & Maintenance Crons
 configure_docker_log_rotation_and_maintenance() {
     echo -e "\n${CYAN}▶ Checking Docker log rotation and automated maintenance crons...${NC}"
