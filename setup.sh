@@ -535,7 +535,31 @@ else
     echo -e "\n${YELLOW}▶ Skipping local PostgreSQL (Topology: ci-only; using REST API sync to DevOps Manager).${NC}"
 fi
 
+configure_registry_auth() {
+    local reg_user="${DOCKER_REGISTRY_USER:-${REGISTRY_USER:-admin}}"
+    local reg_pass="${DOCKER_REGISTRY_PASSWORD:-${REGISTRY_PASSWORD:-tmkregistry2026}}"
+    local auth_dir="$SCRIPT_DIR/docker-registry/auth"
+    local htpasswd_file="$auth_dir/htpasswd"
+
+    mkdir -p "$auth_dir"
+    echo -e "${CYAN}▶ Generating Docker Registry htpasswd from .env credentials (user: ${reg_user})...${NC}"
+
+    if command -v htpasswd &>/dev/null; then
+        htpasswd -B -b -c "$htpasswd_file" "$reg_user" "$reg_pass" >/dev/null 2>&1
+    elif command -v python3 &>/dev/null && python3 -c "import bcrypt" &>/dev/null; then
+        REG_USER="$reg_user" REG_PASS="$reg_pass" python3 -c "import os, bcrypt; print(os.environ['REG_USER'] + ':' + bcrypt.hashpw(os.environ['REG_PASS'].encode(), bcrypt.gensalt(5)).decode())" > "$htpasswd_file"
+    elif command -v openssl &>/dev/null; then
+        echo "${reg_user}:$(openssl passwd -apr1 "$reg_pass")" > "$htpasswd_file"
+    else
+        docker run --rm --entrypoint htpasswd httpd:alpine -B -b -c /dev/stdout "$reg_user" "$reg_pass" > "$htpasswd_file" 2>/dev/null || true
+    fi
+
+    chmod 600 "$htpasswd_file" 2>/dev/null || true
+    echo -e "${GREEN}✅ Docker Registry htpasswd generated and secured.${NC}"
+}
+
 if [ "${DOCKER_REGISTRY_TYPE:-private}" = "private" ] && [ "$DEPLOYMENT_MODE" != "devops-only" ]; then
+    configure_registry_auth
     echo -e "\n${CYAN}▶ Starting Private Docker Registry...${NC}"
     docker compose -f "$SCRIPT_DIR/docker-registry/docker-compose.yml" --env-file "$SCRIPT_DIR/.env" up -d
 elif [ "${DOCKER_REGISTRY_TYPE:-}" = "external" ]; then
