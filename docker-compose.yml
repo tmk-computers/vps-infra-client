@@ -72,9 +72,9 @@ services:
 
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.devops-api-prod-http.rule=Host(`${DEVOPS_API_HOST:-devops-api.example.com}`)"
+      - "traefik.http.routers.devops-api-prod-http.rule=Host(`${DEVOPS_API_HOST:-devops-api.example.com}`) || (Host(`${PRIVATE_IP:-127.0.0.1}`) && PathPrefix(`/api`))"
       - "traefik.http.routers.devops-api-prod-http.entrypoints=web"
-      - "traefik.http.routers.devops-api-prod.rule=Host(`${DEVOPS_API_HOST:-devops-api.example.com}`)"
+      - "traefik.http.routers.devops-api-prod.rule=Host(`${DEVOPS_API_HOST:-devops-api.example.com}`) || (Host(`${PRIVATE_IP:-127.0.0.1}`) && PathPrefix(`/api`))"
       - "traefik.http.routers.devops-api-prod.entrypoints=websecure"
       - "traefik.http.routers.devops-api-prod.tls=true"
       - "traefik.http.routers.devops-api-prod.tls.certresolver=myresolver"
@@ -92,9 +92,9 @@ services:
       - traefik_net
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.devops-web-prod-http.rule=Host(`${DEVOPS_WEB_HOST:-devops.example.com}`) || Host(`devops-manager.${PRIMARY_DOMAIN:-example.com}`)"
+      - "traefik.http.routers.devops-web-prod-http.rule=Host(`${DEVOPS_WEB_HOST:-devops.example.com}`) || Host(`devops-manager.${PRIMARY_DOMAIN:-example.com}`) || Host(`${PRIVATE_IP:-127.0.0.1}`)"
       - "traefik.http.routers.devops-web-prod-http.entrypoints=web"
-      - "traefik.http.routers.devops-web-prod.rule=Host(`${DEVOPS_WEB_HOST:-devops.example.com}`) || Host(`devops-manager.${PRIMARY_DOMAIN:-example.com}`)"
+      - "traefik.http.routers.devops-web-prod.rule=Host(`${DEVOPS_WEB_HOST:-devops.example.com}`) || Host(`devops-manager.${PRIMARY_DOMAIN:-example.com}`) || Host(`${PRIVATE_IP:-127.0.0.1}`)"
       - "traefik.http.routers.devops-web-prod.entrypoints=websecure"
       - "traefik.http.routers.devops-web-prod.tls=true"
       - "traefik.http.routers.devops-web-prod.tls.certresolver=myresolver"
@@ -129,9 +129,9 @@ services:
       - traefik_net
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.ci-api-http.rule=Host(`${CI_API_HOST:-ci-api.example.com}`)"
+      - "traefik.http.routers.ci-api-http.rule=Host(`${CI_API_HOST:-ci-api.example.com}`) || (Host(`${PRIVATE_IP:-127.0.0.1}`) && PathPrefix(`/ci-api`))"
       - "traefik.http.routers.ci-api-http.entrypoints=web"
-      - "traefik.http.routers.ci-api.rule=Host(`${CI_API_HOST:-ci-api.example.com}`)"
+      - "traefik.http.routers.ci-api.rule=Host(`${CI_API_HOST:-ci-api.example.com}`) || (Host(`${PRIVATE_IP:-127.0.0.1}`) && PathPrefix(`/ci-api`))"
       - "traefik.http.routers.ci-api.entrypoints=websecure"
       - "traefik.http.routers.ci-api.tls=true"
       - "traefik.http.routers.ci-api.tls.certresolver=myresolver"
@@ -149,9 +149,9 @@ services:
       - traefik_net
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.ci-web-http.rule=Host(`${CI_WEB_HOST:-ci.example.com}`)"
+      - "traefik.http.routers.ci-web-http.rule=Host(`${CI_WEB_HOST:-ci.example.com}`) || (Host(`${PRIVATE_IP:-127.0.0.1}`) && PathPrefix(`/ci`))"
       - "traefik.http.routers.ci-web-http.entrypoints=web"
-      - "traefik.http.routers.ci-web.rule=Host(`${CI_WEB_HOST:-ci.example.com}`)"
+      - "traefik.http.routers.ci-web.rule=Host(`${CI_WEB_HOST:-ci.example.com}`) || (Host(`${PRIVATE_IP:-127.0.0.1}`) && PathPrefix(`/ci`))"
       - "traefik.http.routers.ci-web.entrypoints=websecure"
       - "traefik.http.routers.ci-web.tls=true"
       - "traefik.http.routers.ci-web.tls.certresolver=myresolver"

@@ -15,9 +15,9 @@ services:
       - "--entrypoints.web.transport.respondingTimeouts.readTimeout=300s"
       - "--entrypoints.websecure.transport.respondingTimeouts.readTimeout=300s"
 
-      # Global HTTP → HTTPS redirect middleware
-      - "--entrypoints.web.http.redirections.entryPoint.to=websecure"
-      - "--entrypoints.web.http.redirections.entryPoint.scheme=https"
+      # Global HTTP → HTTPS redirect middleware (customizable for private networks)
+      - "${TRAEFIK_HTTP_REDIRECT_TO:---entrypoints.web.http.redirections.entryPoint.to=websecure}"
+      - "${TRAEFIK_HTTP_REDIRECT_SCHEME:---entrypoints.web.http.redirections.entryPoint.scheme=https}"
 
       # SSL Certificates (Let's Encrypt)
       - "--certificatesresolvers.myresolver.acme.tlschallenge=true"

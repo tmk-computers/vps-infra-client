@@ -94,6 +94,7 @@ EOF
     if [ -f "$SCRIPT_DIR/scripts/prune_registry.py" ]; then
         chmod +x "$SCRIPT_DIR/scripts/prune_registry.py"
     fi
+    chmod +x "$SCRIPT_DIR/uninstall.sh" "$SCRIPT_DIR/scripts/"*.sh 2>/dev/null || true
 }
 
 configure_docker_log_rotation_and_maintenance
@@ -517,6 +518,13 @@ prepare_traefik_ports() {
 echo -e "\n${CYAN}▶ Preparing HTTP and HTTPS ports for Traefik...${NC}"
 prepare_traefik_ports
 
+# Configure Network Mode (Public vs Private Network Access)
+if [ "${NETWORK_MODE:-public}" = "private" ] || [ "${ENABLE_HTTPS_REDIRECT:-true}" = "false" ]; then
+    echo -e "${YELLOW}▶ Private Network Mode Active: Disabling mandatory HTTPS redirect...${NC}"
+    export TRAEFIK_HTTP_REDIRECT_TO="--api.debug=false"
+    export TRAEFIK_HTTP_REDIRECT_SCHEME="--api.insecure=false"
+fi
+
 echo -e "\n${CYAN}▶ Starting Reverse Proxy (Traefik)...${NC}"
 docker compose -f "$SCRIPT_DIR/network/traefik/docker-compose.yml" --env-file "$SCRIPT_DIR/.env" up -d
 
@@ -595,6 +603,9 @@ if [ "$DEPLOYMENT_MODE" != "devops-only" ]; then
 fi
 
 echo -e "  • Traefik Dashboard:     ${CYAN}https://${TRAEFIK_DASHBOARD_HOST:-traefik.example.com}${NC}"
+if [ "${NETWORK_MODE:-public}" = "private" ]; then
+    echo -e "  • Private Direct URL:    ${CYAN}http://${PRIVATE_IP:-127.0.0.1}${NC}"
+fi
 echo ""
 
 if [ "$DEPLOYMENT_MODE" != "ci-only" ]; then
