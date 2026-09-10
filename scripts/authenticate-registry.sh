@@ -19,6 +19,10 @@ authenticate_registry() {
     for ((attempt = 1; attempt <= attempts; attempt++)); do
         if output=$(printf '%s\n' "$password" | docker login "$target" -u "$user" --password-stdin 2>&1); then
             echo "✅ Docker registry authentication succeeded."
+            if [[ "$target" != "localhost:5000" && "${DOCKER_REGISTRY_TYPE:-private}" == private ]]; then
+                printf '%s\n' "$password" | docker login "localhost:5000" -u "$user" --password-stdin &>/dev/null || true
+                printf '%s\n' "$password" | docker login "127.0.0.1:5000" -u "$user" --password-stdin &>/dev/null || true
+            fi
             return 0
         fi
         if (( attempt < attempts )); then
@@ -36,3 +40,7 @@ authenticate_registry() {
     fi
     return 1
 }
+
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+    authenticate_registry "$@"
+fi

@@ -537,7 +537,10 @@ fi
 # Authenticate only after infrastructure startup. Local registry startup may take
 # a few seconds; remote registries should already be available.
 source "$SCRIPT_DIR/scripts/authenticate-registry.sh"
-authenticate_registry
+authenticate_registry || {
+    echo -e "${YELLOW}⚠️ Registry authentication could not be completed automatically.${NC}" >&2
+    echo -e "${YELLOW}   Check registry availability and credentials in .env, or run: bash scripts/authenticate-registry.sh${NC}" >&2
+}
 
 # Detect compose file
 if [ -f "$SCRIPT_DIR/docker-compose.yml" ]; then
