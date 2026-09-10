@@ -33,6 +33,22 @@ if ! docker compose version &> /dev/null; then
 fi
 echo -e "${GREEN}✅ Docker & Docker Compose detected.${NC}"
 
+# Check daemon access before making any host configuration changes.
+if DOCKER_ACCESS_ERROR=$(docker info 2>&1); then
+    unset DOCKER_ACCESS_ERROR
+else
+    printf '%s\n' "$DOCKER_ACCESS_ERROR" >&2
+    if [[ "$DOCKER_ACCESS_ERROR" == *"permission denied"* ]]; then
+        echo -e "${RED}❌ Your user does not have permission to access Docker.${NC}" >&2
+        echo 'Run this command to add your current user to the Docker group and refresh group membership:' >&2
+        echo '  sudo usermod -aG docker "$USER" && newgrp docker' >&2
+        echo 'Then rerun setup with the same arguments, for example: bash setup.sh' >&2
+    else
+        echo -e "${RED}❌ Cannot connect to Docker. Check that the Docker daemon is running, then rerun setup.${NC}" >&2
+    fi
+    exit 1
+fi
+
 # 1.1 Configure Docker Log Rotation & Maintenance Crons
 configure_docker_log_rotation_and_maintenance() {
     echo -e "\n${CYAN}▶ Checking Docker log rotation and automated maintenance crons...${NC}"
@@ -270,19 +286,6 @@ fi
 # Resolve placeholder hostnames before creating or starting any infrastructure.
 source "$SCRIPT_DIR/scripts/configure-domains.sh"
 configure_domains
-
-# Registry Authentication if credentials provided
-REG_AUTH_USER="${DOCKER_REGISTRY_USER:-${REGISTRY_USER:-}}"
-REG_AUTH_PASS="${DOCKER_REGISTRY_PASSWORD:-${REGISTRY_PASSWORD:-}}"
-if [ -n "$REG_AUTH_USER" ] && [ -n "$REG_AUTH_PASS" ]; then
-    REG_TARGET="${DOCKER_REGISTRY_HOST:-${REGISTRY_HOST:-}}"
-    if [ -n "$REG_TARGET" ]; then
-        echo -e "${CYAN}▶ Authenticating Docker with registry ${REG_TARGET}...${NC}"
-        echo "$REG_AUTH_PASS" | docker login "$REG_TARGET" -u "$REG_AUTH_USER" --password-stdin || {
-            echo -e "${YELLOW}⚠️ Docker login failed. Please verify your registry credentials.${NC}"
-        }
-    fi
-fi
 
 # 4. Create external Docker network
 echo -e "${CYAN}▶ Ensuring 'traefik_net' Docker network exists...${NC}"
@@ -531,24 +534,10 @@ elif [ "${DOCKER_REGISTRY_TYPE:-}" = "external" ]; then
     echo -e "\n${YELLOW}▶ Skipping local Docker Registry container (Using External Registry: ${DOCKER_REGISTRY_HOST:-$REGISTRY_HOST}).${NC}"
 fi
 
-# Ensure Docker daemon is authenticated with active registry
-REG_LOGIN_USER="${DOCKER_REGISTRY_USER:-${REGISTRY_USER:-}}"
-REG_LOGIN_PASS="${DOCKER_REGISTRY_PASSWORD:-${REGISTRY_PASSWORD:-}}"
-REG_LOGIN_TARGET="${DOCKER_REGISTRY_HOST:-${REGISTRY_HOST:-localhost:5000}}"
-
-if [ "${DOCKER_REGISTRY_TYPE:-private}" = "private" ]; then
-    REG_LOGIN_USER="${REG_LOGIN_USER:-admin}"
-    REG_LOGIN_PASS="${REG_LOGIN_PASS:-tmkregistry2026}"
-fi
-
-if [ -n "$REG_LOGIN_USER" ] && [ -n "$REG_LOGIN_PASS" ]; then
-    echo -e "\n${CYAN}▶ Authenticating Docker with registry (${REG_LOGIN_TARGET})...${NC}"
-    echo "$REG_LOGIN_PASS" | docker login "$REG_LOGIN_TARGET" -u "$REG_LOGIN_USER" --password-stdin 2>/dev/null || true
-    if [ "$REG_LOGIN_TARGET" != "localhost:5000" ]; then
-        echo "$REG_LOGIN_PASS" | docker login "localhost:5000" -u "$REG_LOGIN_USER" --password-stdin 2>/dev/null || true
-        echo "$REG_LOGIN_PASS" | docker login "127.0.0.1:5000" -u "$REG_LOGIN_USER" --password-stdin 2>/dev/null || true
-    fi
-fi
+# Authenticate only after infrastructure startup. Local registry startup may take
+# a few seconds; remote registries should already be available.
+source "$SCRIPT_DIR/scripts/authenticate-registry.sh"
+authenticate_registry
 
 # Detect compose file
 if [ -f "$SCRIPT_DIR/docker-compose.yml" ]; then
