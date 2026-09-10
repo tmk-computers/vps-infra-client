@@ -41,7 +41,7 @@ services:
     env_file:
       - ../.env
     environment:
-      - REGISTRY_TITLE=${COMPANY_NAME:-RentSort} Registry
+      - REGISTRY_TITLE=${COMPANY_NAME:-Private} Registry
       - REGISTRY_URL=https://${REGISTRY_HOST:-registry.example.com}
       - SINGLE_REGISTRY=true
       - THEME=auto
