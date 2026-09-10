@@ -3,6 +3,8 @@ services:
     image: registry:2
     container_name: docker-registry-backend
     restart: always
+    env_file:
+      - ../.env
     environment:
       REGISTRY_AUTH: htpasswd
       REGISTRY_AUTH_HTPASSWD_REALM: "Registry Realm"
@@ -36,10 +38,13 @@ services:
     image: joxit/docker-registry-ui:latest
     container_name: docker-registry-ui
     restart: always
+    env_file:
+      - ../.env
     environment:
-      - REGISTRY_TITLE=${COMPANY_NAME:-Private} Registry
+      - REGISTRY_TITLE=${COMPANY_NAME:-RentSort} Registry
       - REGISTRY_URL=https://${REGISTRY_HOST:-registry.example.com}
       - SINGLE_REGISTRY=true
+      - THEME=auto
     networks:
       - traefik_net
     labels:
